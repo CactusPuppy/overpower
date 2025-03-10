@@ -1,0 +1,10 @@
+rule: "[cutscene/cutscene_player.del] Handle cutscene logic"
+Event.OngoingPlayer
+if (HasSpawned())
+if (CUTSCENE_GAME_STATES.Contains(currentGameState))
+{
+  // DisableTextChat(EventPlayer());
+  DisableScoreboard(EventPlayer());
+  DisableGameModeHud();
+  DisableHeroHud();
+}

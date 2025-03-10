@@ -1,8 +1,19 @@
 globalvar Boolean DEBUG_MODE = WorkshopSettingToggle("99. DEBUG MODE", "DEBUG MODE ENABLED", true, -100);
 
-rule: "Create DEBUG huds"
+disabled rule: "Create DEBUG huds"
 if (DEBUG_MODE)
 if (IsGameInProgress())
 {
   LogToInspector("Game In Progress");
+  SetMatchTime(10);
+  WaitUntil(MatchTime() == 0, 10);
+  DeclareTeamVictory(Team.Team1);
+}
+
+rule: "Create some debug interactions"
+if (DEBUG_MODE)
+{
+  NewInteractionPoint(Vector(0,0,0), InteractableType.SIMPLE);
+  NewInteractionPoint(Vector(10,0,0), InteractableType.SIMPLE);
+  NewInteractionPoint(Vector(20,0,0), InteractableType.SIMPLE);
 }

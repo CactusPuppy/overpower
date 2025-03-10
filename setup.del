@@ -1,19 +1,19 @@
 rule: "Global setup"
 {
-  CreateHudText(
-    VisibleTo:      AllPlayers(),
-    Text:           " \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
-    Location:       Location.Top,
-    SortOrder:      0.1,
-    TextColor:      CustomColor(0,0,0,0),
-    Reevaluation:   HudTextRev.VisibleTo,
-    Spectators:     Spectators.VisibleAlways);
+  // CreateHudText(
+  //   VisibleTo:      AllPlayers(),
+  //   Text:           " \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+  //   Location:       Location.Top,
+  //   SortOrder:      0.1,
+  //   TextColor:      CustomColor(0,0,0,0),
+  //   Reevaluation:   HudTextRev.VisibleTo,
+  //   Spectators:     Spectators.VisibleAlways);
+  DisableCompletion();
 }
 
 rule: "Player setup"
 Event.OnPlayerJoin
 {
-  DisableGameModeHud(EventPlayer());
   CreateHudText(
     VisibleTo:        IsGameInProgress() ? AllPlayers(Team.All) : null,
     Text:             <"Showtime In: <0>:<1>",
@@ -26,9 +26,9 @@ Event.OnPlayerJoin
     TextColor:        Color.White,
     Reevaluation:     HudTextRev.VisibleToAndString,
     Spectators:       Spectators.VisibleNever);
-  // Cutscene
-  if (IsWaitingForPlayers()) {
-    DisableTextChat(EventPlayer());
-    DisableScoreboard(EventPlayer());
+  // intro/conclusion cutscene setup
+  if (CUTSCENE_GAME_STATES.Contains(currentGameState)) {
+    // Force spawning to see cutscene
+    ForcePlayerHero(EventPlayer(), Hero.Tracer);
   }
 }

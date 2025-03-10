@@ -1,0 +1,6 @@
+GameState[] CUTSCENE_GAME_STATES: [
+  GameState.INTRO,
+  GameState.CONCLUSION
+];
+
+import "cutscene_player.del";

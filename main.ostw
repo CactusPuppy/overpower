@@ -12,6 +12,7 @@ settings
 		Match Voice Chat: Enabled
 		Max Team 1 Players: 4
 		Max Team 2 Players: 4
+    Return To Lobby: After A Game
 	}
 
 	modes
@@ -20,7 +21,8 @@ settings
 		{
 			enabled maps
 			{
-				Horizon Lunar Colony
+				// Horizon Lunar Colony
+        Workshop Expanse
 			}
 			Limit Roles: 1 Tank 2 Offense 2 Support
 		}
@@ -65,5 +67,9 @@ settings
 
 import "./setup.del";
 import "interaction/interaction.del";
+import "cutscene/index.del";
 
+import "gameFlow.del";
+
+import "lib/dictionary.del";
 import "./debug.del";

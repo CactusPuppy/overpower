@@ -1,7 +1,5 @@
 rule: 'when a player gets close enough to a simple interaction point, print a message'
 Event.OngoingPlayer
-Team.All
-Player.All
 if (nearestInteractPoint.type == InteractableType.SIMPLE)
 {
   SmallMessage(EventPlayer(), "You found a simple interaction point!");

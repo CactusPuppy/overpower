@@ -1,0 +1,73 @@
+enum GameState {
+  NONE = "NONE",
+  INTRO = "INTRO",
+  SELECTING_HEROES = "SELECTING_HEROES",
+  GAMEPLAY = "GAMEPLAY",
+  CONCLUSION = "CONCLUSION"
+}
+
+globalvar GameState currentGameState = GameState.NONE;
+globalvar GameStateAction gameStateAction;
+
+rule: "When game first boots, perform gamemode setup and move to intro phase"
+if (currentGameState == GameState.NONE)
+if (IsGameInProgress())
+{
+  PauseMatchTime();
+  WaitUntil(
+    ContinueCondition: CountOf(AllPlayers(Team.Team1)) > 0
+      && (CountOf(AllPlayers(Team.Team2)) > 0 || DEBUG_MODE)
+      && AllPlayers().IsTrueForAll(p => HasSpawned(p)),
+    Timeout: 10);
+  GSM_Trigger(GameStateAction.INIT_SETUP_COMPLETE);
+}
+
+rule: "Handle time running out in every phase"
+if (MatchTime() == 0)
+{
+  switch (currentGameState) {
+    case GameState.SELECTING_HEROES:
+
+  }
+}
+
+rule: "End match after victory poses"
+if (IsMatchComplete())
+{
+  Wait(8.5);
+  ReturnToLobby();
+}
+
+// =========== STATE MACHINE ==============
+enum GameStateAction {
+  INIT_SETUP_COMPLETE,
+  INTRO_COMPLETE,
+  SELECTING_HEROES_COMPLETE,
+  TEAM_LSF_WIN,
+  TEAM_TALON_WIN,
+  CONCLUSION_COMPLETE
+}
+
+void GSM_Trigger(GameStateAction action) {
+  gameStateAction = action;
+  GameStateMachine();
+}
+
+void GameStateMachine() "[gameFlow.del | SUB] advance game state"
+{
+  LogToInspector($"GSM_Enter: GameState {currentGameState} | Action: {gameStateAction}");
+  switch (currentGameState) {
+    case GameState.NONE:
+      GSM_GS_NONE();
+      break;
+  }
+  LogToInspector($"GSM_Exit: GameState {currentGameState} | Action: {gameStateAction}");
+}
+
+void GSM_GS_NONE() {
+  switch (gameStateAction) {
+    case GameStateAction.INIT_SETUP_COMPLETE:
+      currentGameState = GameState.INTRO;
+      break;
+  }
+}

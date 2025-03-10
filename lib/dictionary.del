@@ -1,0 +1,8 @@
+struct Dictionary<K, V> {
+  K[] keys;
+  V[] values;
+
+  public V Get(in K key) {
+    return values[keys.IndexOf(key)];
+  }
+}
