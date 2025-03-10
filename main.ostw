@@ -1,0 +1,69 @@
+settings
+{
+	main
+	{
+		Description: "Scramble to get the power back on before the big concert, or snuff out the lights for good in this asymmetric hide-and-go-seek PvP mode!\nBy CactusPuppy\nCommissioned by Blizzard Entertainment"
+		Mode Name: "OverPower"
+	}
+
+	lobby
+	{
+		Allow Players Who Are In Queue: No
+		Match Voice Chat: Enabled
+		Max Team 1 Players: 4
+		Max Team 2 Players: 4
+	}
+
+	modes
+	{
+		Skirmish
+		{
+			enabled maps
+			{
+				Horizon Lunar Colony
+			}
+			Limit Roles: 1 Tank 2 Offense 2 Support
+		}
+
+		General
+		{
+			Game Mode Start: Manual
+		}
+	}
+
+	heroes {
+		Team 1 {
+			enabled heroes {
+				D.Va
+				Winston
+				Kiriko
+				Brigitte
+				Juno
+				Mercy
+				Illari
+				Tracer
+				Ashe
+				Sombra
+			}
+		}
+
+		Team 2 {
+			enabled heroes {
+				Mauga
+				Reaper
+				Moira
+				Widowmaker
+			}
+		}
+	}
+
+	extensions {
+		Play More Effects
+		Spawn More Dummy Bots
+	}
+}
+
+import "./setup.del";
+import "interaction.del";
+
+import "./debug.del";

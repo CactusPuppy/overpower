@@ -1,0 +1,34 @@
+rule: "Global setup"
+{
+  CreateHudText(
+    VisibleTo:      AllPlayers(),
+    Text:           " \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    Location:       Location.Top,
+    SortOrder:      0.1,
+    TextColor:      CustomColor(0,0,0,0),
+    Reevaluation:   HudTextRev.VisibleTo,
+    Spectators:     Spectators.VisibleAlways);
+}
+
+rule: "Player setup"
+Event.OnPlayerJoin
+{
+  DisableGameModeHud(EventPlayer());
+  CreateHudText(
+    VisibleTo:        IsGameInProgress() ? AllPlayers(Team.All) : null,
+    Text:             <"Showtime In: <0>:<1>",
+                        RoundToInteger(MatchTime() / 60, Rounding.Down),
+                        RoundToInteger(MatchTime() % 60, Rounding.Down) > 9
+                          ? RoundToInteger(MatchTime() % 60, Rounding.Down)
+                          : <"0<0>", RoundToInteger(MatchTime() % 60, Rounding.Down)>>,
+    Location:         Location.Top,
+    SortOrder:        -0.5,
+    TextColor:        Color.White,
+    Reevaluation:     HudTextRev.VisibleToAndString,
+    Spectators:       Spectators.VisibleNever);
+  // Cutscene
+  if (IsWaitingForPlayers()) {
+    DisableTextChat(EventPlayer());
+    DisableScoreboard(EventPlayer());
+  }
+}

@@ -1,0 +1,35 @@
+enum InteractableType {
+  SIMPLE,
+  SWITCH,
+  BATTERY_SOURCE,
+  BATTERY_RECEIVER,
+  GENERATOR
+}
+
+globalvar Number nextInteractPointId = 0;
+single struct InteractPoint {
+  public Number id;
+  public Vector location;
+  public InteractableType type;
+
+  public static constructor() {
+
+  }
+}
+
+Boolean IsPointInteractable(InteractPoint point, Player player = EventPlayer()): point.location.DistanceTo(EventPlayer()) <= INTERACT_RADIUS;
+
+globalvar InteractPoint[] interactionPoints;
+
+Number INTERACT_RADIUS: 2;
+
+playervar InteractPoint nearestInteractPoint;
+rule: "Update nearest interact point whenever a player gets close"
+Event.OngoingPlayer
+if (interactionPoints.IsTrueForAny(
+  point => IsPointInteractable(point)
+))
+{
+  nearestInteractPoint = interactionPoints.Filter(point => IsPointInteractable(point)).Sort(point => point.location.DistanceTo(EventPlayer())).First;
+  WaitUntil()
+}

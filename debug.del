@@ -1,0 +1,8 @@
+globalvar Boolean DEBUG_MODE = WorkshopSettingToggle("99. DEBUG MODE", "DEBUG MODE ENABLED", false, -100);
+
+rule: "Create DEBUG huds"
+if (DEBUG_MODE)
+if (IsGameInProgress())
+{
+  LogToInspector("Game In Progress");
+}
