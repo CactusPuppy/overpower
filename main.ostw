@@ -64,6 +64,6 @@ settings
 }
 
 import "./setup.del";
-import "interaction.del";
+import "interaction/interaction.del";
 
 import "./debug.del";

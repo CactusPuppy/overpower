@@ -1,4 +1,4 @@
-globalvar Boolean DEBUG_MODE = WorkshopSettingToggle("99. DEBUG MODE", "DEBUG MODE ENABLED", false, -100);
+globalvar Boolean DEBUG_MODE = WorkshopSettingToggle("99. DEBUG MODE", "DEBUG MODE ENABLED", true, -100);
 
 rule: "Create DEBUG huds"
 if (DEBUG_MODE)

@@ -1,0 +1,57 @@
+enum InteractableType {
+  NONE,
+  SIMPLE,
+  SWITCH,
+  BATTERY_SOURCE,
+  BATTERY_RECEIVER,
+  GENERATOR
+}
+
+globalvar Number nextInteractPointId = 1;
+single struct InteractionPoint {
+  public Number id;
+  public Vector location;
+  public InteractableType type;
+
+  public void CreateEffects() {
+    switch (type) {
+      case InteractableType.SIMPLE:
+        CreateEffect(AllPlayers(), Effect.Ring, Color.Orange, location, INTERACT_RADIUS, EffectRev.VisibleTo);
+        break;
+    }
+  }
+}
+
+void NewInteractionPoint(in Vector location, in InteractableType type) {
+  interactionPoints.ModAppend({ id: nextInteractPointId, location: location, type: type });
+  interactionPoints.Last.CreateEffects();
+}
+
+Boolean IsPointInteractable(InteractionPoint point, Player player = EventPlayer()): point.location.DistanceTo(EventPlayer()) <= INTERACT_RADIUS;
+InteractionPoint NearestInteractionPoint(Player player = EventPlayer()): interactionPoints.Filter(point => IsPointInteractable(point)).Sort(point => point.location.DistanceTo(EventPlayer())).First;
+
+globalvar InteractionPoint[] interactionPoints = [];
+
+Number INTERACT_RADIUS: 2;
+
+playervar InteractionPoint nearestInteractPoint;
+rule: "Update nearest interact point whenever a player gets close"
+Event.OngoingPlayer
+if (HasSpawned())
+if (IsAlive())
+if (interactionPoints.IsTrueForAny(
+  point => IsPointInteractable(point)
+))
+{
+  nearestInteractPoint = NearestInteractionPoint();
+  WaitUntil(nearestInteractPoint.id != NearestInteractionPoint().id
+    || interactionPoints.All(point => !IsPointInteractable(point)),
+    Timeout: 1000000);
+  if (interactionPoints.All(point => !IsPointInteractable(point))) {
+    nearestInteractPoint = null;
+  }
+  MinWait();
+  LoopIfConditionIsTrue();
+}
+
+import "simple.del";
