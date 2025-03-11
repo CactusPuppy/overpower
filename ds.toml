@@ -1,1 +1,2 @@
 entry_point = "main.ostw"
+c_style_workshop_output = true

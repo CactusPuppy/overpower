@@ -7,4 +7,14 @@ if (CUTSCENE_GAME_STATES.Contains(currentGameState))
   DisableScoreboard(EventPlayer());
   DisableGameModeHud();
   DisableHeroHud();
+  StartCamera(EventPlayer(),UpdateEveryFrame(cutsceneCamPos),UpdateEveryFrame(cutsceneCamPos + cutsceneCamFac), 1000);
+
+  WaitUntil(!CUTSCENE_GAME_STATES.Contains(currentGameState), 1000000);
+
+  EnableTextChat(EventPlayer());
+  EnableScoreboard(EventPlayer());
+  EnableGameModeHud();
+  EnableHeroHud();
+  StopForcingHero(EventPlayer());
+  StopCamera();
 }

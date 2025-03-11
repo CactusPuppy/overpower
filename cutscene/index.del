@@ -3,4 +3,5 @@ GameState[] CUTSCENE_GAME_STATES: [
   GameState.CONCLUSION
 ];
 
+import "cutscene_global.del";
 import "cutscene_player.del";

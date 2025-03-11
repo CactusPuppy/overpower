@@ -8,6 +8,10 @@ enum InteractableType {
 }
 
 globalvar Number nextInteractPointId = 1;
+globalvar Dictionary<String, Any> interactionData = {
+  Keys: [],
+  Values: []
+};
 single struct InteractionPoint {
   public Number id;
   public Vector location;
@@ -18,23 +22,44 @@ single struct InteractionPoint {
       case InteractableType.SIMPLE:
         CreateEffect(AllPlayers(), Effect.Ring, Color.Orange, location, INTERACT_RADIUS, EffectRev.VisibleTo);
         break;
+      case InteractableType.SWITCH:
+        CreateEffect(AllPlayers(), Effect.Sphere, GetDataValue($"activated") ? Color.Green : Color.Red, EvaluateOnce(location), 0.5, EffectRev.VisibleToAndColor);
+        break;
     }
+  }
+
+  public Any GetDataValue(in String key) {
+    return interactionData.Get($"{id}-{key}");
+  }
+
+  public void SetDataValue(in String key, in Any value) {
+    Dictionary<String, Any>.SetOrAdd(interactionData, $"{id}-{key}", value);
   }
 }
 
 void NewInteractionPoint(in Vector location, in InteractableType type) {
-  interactionPoints.ModAppend({ id: nextInteractPointId, location: location, type: type });
-  interactionPoints.Last.CreateEffects();
+  interactionPoints.ModAppend({
+    id: nextInteractPointId,
+    location: location,
+    type: type,
+    data: { keys: [], values: [] } });
+  nextInteractPointId += 1;
+  # Create the right effects for the interaction point type
+  interactionPoints[EvaluateOnce(interactionPoints.Length - 1)].CreateEffects();
 }
 
-Boolean IsPointInteractable(InteractionPoint point, Player player = EventPlayer()): point.location.DistanceTo(EventPlayer()) <= INTERACT_RADIUS;
+Boolean IsPointInteractable(InteractionPoint point, Player player = EventPlayer()): point.location.DistanceTo(player.EyePosition()) <= INTERACT_RADIUS && IsInLineOfSight(player.EyePosition(), point.location);
+
 InteractionPoint NearestInteractionPoint(Player player = EventPlayer()): interactionPoints.Filter(point => IsPointInteractable(point)).Sort(point => point.location.DistanceTo(EventPlayer())).First;
+
+Number NearestInteractionPointIndex(Player player = EventPlayer()): interactionPoints.Map(_ => CurrentArrayIndex()).Sort(index => interactionPoints[index].location.DistanceTo(player.EyePosition())).First;
 
 globalvar InteractionPoint[] interactionPoints = [];
 
-Number INTERACT_RADIUS: 2;
+Number INTERACT_RADIUS: 3;
 
-playervar InteractionPoint nearestInteractPoint;
+playervar Number nearestInteractPointIndex = -1;
+InteractionPoint CurrentInteractionPoint(Player p = EventPlayer()): interactionPoints[p.nearestInteractPointIndex];
 rule: "Update nearest interact point whenever a player gets close"
 Event.OngoingPlayer
 if (HasSpawned())
@@ -43,15 +68,14 @@ if (interactionPoints.IsTrueForAny(
   point => IsPointInteractable(point)
 ))
 {
-  nearestInteractPoint = NearestInteractionPoint();
-  WaitUntil(nearestInteractPoint.id != NearestInteractionPoint().id
+  nearestInteractPointIndex = NearestInteractionPointIndex();
+  if (DEBUG_MODE) SmallMessage(EventPlayer(), $"Walked near an interactable! NIPI: {nearestInteractPointIndex}");
+  WaitUntil(CurrentInteractionPoint().id != NearestInteractionPoint().id
     || interactionPoints.All(point => !IsPointInteractable(point)),
     Timeout: 1000000);
   if (interactionPoints.All(point => !IsPointInteractable(point))) {
-    nearestInteractPoint = null;
+    nearestInteractPointIndex = -1;
   }
   MinWait();
   LoopIfConditionIsTrue();
 }
-
-import "simple.del";

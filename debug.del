@@ -13,7 +13,8 @@ if (IsGameInProgress())
 rule: "Create some debug interactions"
 if (DEBUG_MODE)
 {
-  NewInteractionPoint(Vector(0,0,0), InteractableType.SIMPLE);
-  NewInteractionPoint(Vector(10,0,0), InteractableType.SIMPLE);
-  NewInteractionPoint(Vector(20,0,0), InteractableType.SIMPLE);
+  for (Number i = 0; possibleSwitchLocations.Length; 1) {
+    NewInteractionPoint(possibleSwitchLocations[i], InteractableType.SWITCH);
+    if (RandomReal(0, 1) < 0.5) interactionPoints[EvaluateOnce(i)].SetDataValue("activated", true);
+  }
 }

@@ -17,12 +17,12 @@ settings
 
 	modes
 	{
-		Skirmish
+		Team Deathmatch
 		{
 			enabled maps
 			{
-				// Horizon Lunar Colony
-        Workshop Expanse
+				Horizon Lunar Colony
+        // Workshop Expanse
 			}
 			Limit Roles: 1 Tank 2 Offense 2 Support
 		}
@@ -59,14 +59,22 @@ settings
 		}
 	}
 
-	extensions {
+	// 16 Points Available
+	extensions
+	{
+		Beam Effects
+		Beam Sounds
+		Buff Status Effects
+		Debuff Status Effects
+		Buff and Debuff Sounds
 		Play More Effects
 		Spawn More Dummy Bots
+		Projectiles
 	}
 }
 
 import "./setup.del";
-import "interaction/interaction.del";
+import "interaction/index.del";
 import "cutscene/index.del";
 
 import "gameFlow.del";

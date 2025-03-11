@@ -1,0 +1,6 @@
+import "interaction.del";
+import "data.del";
+
+// === TYPE-SPECIFIC LOGIC ===
+import "types/simple.del";
+import "types/switch.del";

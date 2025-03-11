@@ -1,0 +1,3 @@
+[submodule "lib/OSTWUtils"]
+	path = lib/OSTWUtils
+	url = git@github.com:GrandeurHammers/OSTWUtils.git

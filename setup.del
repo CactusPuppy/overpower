@@ -9,6 +9,7 @@ rule: "Global setup"
   //   Reevaluation:   HudTextRev.VisibleTo,
   //   Spectators:     Spectators.VisibleAlways);
   DisableCompletion();
+  DisableScoring();
 }
 
 rule: "Player setup"

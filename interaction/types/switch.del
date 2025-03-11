@@ -1,0 +1,27 @@
+Boolean IsPlayerHoveringSwitch(Player p = EventPlayer()): DoesLineIntersectSphere(p.EyePosition(), p.FacingDirection(), CurrentInteractionPoint(p).location, 0.5);
+
+rule: 'when a player presses interact and the nearest interact point is a switch, flip it'
+Event.OngoingPlayer
+Team.Team1
+Player.All
+if (EventPlayer().IsButtonHeld(Button.Interact))
+{
+  AbortIf(CurrentInteractionPoint().type != InteractableType.SWITCH);
+  AbortIf(!IsPlayerHoveringSwitch());
+  if (DEBUG_MODE) LogToInspector($"Switch state: {interactionPoints[nearestInteractPointIndex].GetDataValue('activated')}");
+  CurrentInteractionPoint().SetDataValue("activated", !CurrentInteractionPoint().GetDataValue("activated"));
+  // PlayEffect()
+}
+
+rule: 'prompt player to press interact to flip the switch'
+{
+  CreateInWorldText(
+    VisibleTo: CurrentInteractionPoint(LocalPlayer()).type == InteractableType.SWITCH && IsPlayerHoveringSwitch(LocalPlayer()) ? LocalPlayer() : null,
+    Header: <"<0>: <2> <1>", InputBindingString(Button.Interact), IconString(Icon.Bolt), @"on">,
+    Position: CurrentInteractionPoint(LocalPlayer()).location,
+    Scale: 1,
+    Clipping: Clipping.DoNotClip,
+    Reevaluation: InworldTextRev.VisibleToPositionAndString,
+    Spectators: Spectators.VisibleNever
+  );
+}

@@ -8,10 +8,10 @@ enum GameState {
 
 globalvar GameState currentGameState = GameState.NONE;
 globalvar GameStateAction gameStateAction;
+globalvar Team winningTeam;
 
 rule: "When game first boots, perform gamemode setup and move to intro phase"
 if (currentGameState == GameState.NONE)
-if (IsGameInProgress())
 {
   PauseMatchTime();
   WaitUntil(
@@ -22,13 +22,11 @@ if (IsGameInProgress())
   GSM_Trigger(GameStateAction.INIT_SETUP_COMPLETE);
 }
 
-rule: "Handle time running out in every phase"
-if (MatchTime() == 0)
+rule: "Handle when assembling heroes starts and ends"
+if (IsAssemblingHeroes())
 {
-  switch (currentGameState) {
-    case GameState.SELECTING_HEROES:
-
-  }
+  WaitUntil(!IsAssemblingHeroes(), 60);
+  GSM_Trigger(GameStateAction.SELECTING_HEROES_COMPLETE);
 }
 
 rule: "End match after victory poses"
@@ -40,12 +38,13 @@ if (IsMatchComplete())
 
 // =========== STATE MACHINE ==============
 enum GameStateAction {
-  INIT_SETUP_COMPLETE,
-  INTRO_COMPLETE,
-  SELECTING_HEROES_COMPLETE,
-  TEAM_LSF_WIN,
-  TEAM_TALON_WIN,
-  CONCLUSION_COMPLETE
+  NONE = "NONE",
+  INIT_SETUP_COMPLETE = "INIT_SETUP_COMPLETE",
+  INTRO_COMPLETE = "INTRO_COMPLETE",
+  SELECTING_HEROES_COMPLETE = "SELECTING_HEROES_COMPLETE",
+  TEAM_LSF_WIN = "TEAM_LSF_WIN",
+  TEAM_TALON_WIN = "TEAM_TALON_WIN",
+  CONCLUSION_COMPLETE = "CONCLUSION_COMPLETE"
 }
 
 void GSM_Trigger(GameStateAction action) {
@@ -60,6 +59,15 @@ void GameStateMachine() "[gameFlow.del | SUB] advance game state"
     case GameState.NONE:
       GSM_GS_NONE();
       break;
+    case GameState.SELECTING_HEROES:
+      GSM_GS_SELECT_HERO();
+      break;
+    case GameState.GAMEPLAY:
+      GSM_GS_GAMEPLAY();
+      break;
+    case GameState.CONCLUSION:
+      GSM_GS_CONCLUSION();
+      break;
   }
   LogToInspector($"GSM_Exit: GameState {currentGameState} | Action: {gameStateAction}");
 }
@@ -69,5 +77,36 @@ void GSM_GS_NONE() {
     case GameStateAction.INIT_SETUP_COMPLETE:
       currentGameState = GameState.INTRO;
       break;
+  }
+}
+
+void GSM_GS_SELECT_HERO() {
+  switch (gameStateAction) {
+    case GameStateAction.SELECTING_HEROES_COMPLETE:
+      currentGameState = GameState.GAMEPLAY;
+      break;
+  }
+}
+
+void GSM_GS_GAMEPLAY() {
+  switch (gameStateAction) {
+    case GameStateAction.TEAM_LSF_WIN:
+      currentGameState = GameState.CONCLUSION;
+      break;
+    case GameStateAction.TEAM_TALON_WIN:
+      currentGameState = GameState.CONCLUSION;
+      break;
+  }
+}
+
+void GSM_GS_CONCLUSION() {
+  switch (gameStateAction) {
+    case GameStateAction.CONCLUSION_COMPLETE:
+      if (!winningTeam) {
+        LogToInspector("[PANIC] We somehow ended up at the end of the game without a victor? Declaring a match draw...");
+        DeclareMatchDraw();
+        return;
+      }
+      DeclareTeamVictory(winningTeam);
   }
 }
