@@ -10,8 +10,8 @@ settings
 	{
 		Allow Players Who Are In Queue: No
 		Match Voice Chat: Enabled
-		Max Team 1 Players: 4
-		Max Team 2 Players: 4
+		Max Team 1 Players: 5
+		Max Team 2 Players: 5
     Return To Lobby: After A Game
 	}
 
@@ -29,7 +29,7 @@ settings
 
 		General
 		{
-			Game Mode Start: Manual
+			Game Mode Start: Immediately
 		}
 	}
 
@@ -37,15 +37,10 @@ settings
 		Team 1 {
 			enabled heroes {
 				D.Va
-				Winston
-				Kiriko
-				Brigitte
 				Juno
 				Mercy
 				Illari
-				Tracer
 				Ashe
-				Sombra
 			}
 		}
 
@@ -53,8 +48,9 @@ settings
 			enabled heroes {
 				Mauga
 				Reaper
-				Moira
 				Widowmaker
+				Moira
+				Baptiste
 			}
 		}
 	}
@@ -62,22 +58,24 @@ settings
 	// 16 Points Available
 	extensions
 	{
-		Beam Effects
-		Beam Sounds
-		Buff Status Effects
-		Debuff Status Effects
-		Buff and Debuff Sounds
+		Explosion Sounds
 		Play More Effects
-		Spawn More Dummy Bots
 		Projectiles
 	}
 }
 
+globalvar Number i;
+
 import "./setup.del";
 import "interaction/index.del";
-import "cutscene/index.del";
+import "hero/index.del";
+// import "cutscene/index.del";
+
 
 import "gameFlow.del";
 
 import "lib/dictionary.del";
+import "lib/limitedVisibility.del";
+import "lib/OSTWUtils/Miscellaneous.del";
+
 import "./debug.del";

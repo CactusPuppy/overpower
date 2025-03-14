@@ -23,7 +23,7 @@ single struct InteractionPoint {
         CreateEffect(AllPlayers(), Effect.Ring, Color.Orange, location, INTERACT_RADIUS, EffectRev.VisibleTo);
         break;
       case InteractableType.SWITCH:
-        CreateEffect(AllPlayers(), Effect.Sphere, GetDataValue($"activated") ? Color.Green : Color.Red, EvaluateOnce(location), 0.5, EffectRev.VisibleToAndColor);
+        CreateEffect(AllPlayers(), Effect.Sphere, GetDataValue($"activated") ? Color.Green : Color.Red, EvaluateOnce(location), SWITCH_RADIUS, EffectRev.VisibleToAndColor);
         break;
     }
   }

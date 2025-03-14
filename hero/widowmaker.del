@@ -1,0 +1,10 @@
+rule: 'When Widowmaker uses ult, remove her vision restriction'
+Event.OngoingPlayer
+Team.All
+Player.Widowmaker
+if (IsUsingUltimate())
+{
+  hasLimitedVision = false;
+  WaitForeverUntil(!IsUsingUltimate());
+  hasLimitedVision = true;
+}

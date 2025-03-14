@@ -10,26 +10,29 @@ rule: "Global setup"
   //   Spectators:     Spectators.VisibleAlways);
   DisableCompletion();
   DisableScoring();
+  # Spacer text
+  CreateHudText(
+    VisibleTo:        AllPlayers(),
+    Text:             <" <0><1>",
+                        AllPlayers().Contains(LocalPlayer()) ? "" : "\n\n\n",
+                        "\n\n\n\n\n\n\n">,
+    Location:         Location.Left,
+    SortOrder:        -1,
+    TextColor:        null,
+    Reevaluation:     HudTextRev.VisibleTo,
+    Spectators:       Spectators.VisibleAlways
+  );
 }
 
 rule: "Player setup"
 Event.OnPlayerJoin
 {
-  CreateHudText(
-    VisibleTo:        IsGameInProgress() ? AllPlayers(Team.All) : null,
-    Text:             <"Showtime In: <0>:<1>",
-                        RoundToInteger(MatchTime() / 60, Rounding.Down),
-                        RoundToInteger(MatchTime() % 60, Rounding.Down) > 9
-                          ? RoundToInteger(MatchTime() % 60, Rounding.Down)
-                          : <"0<0>", RoundToInteger(MatchTime() % 60, Rounding.Down)>>,
-    Location:         Location.Top,
-    SortOrder:        -0.5,
-    TextColor:        Color.White,
-    Reevaluation:     HudTextRev.VisibleToAndString,
-    Spectators:       Spectators.VisibleNever);
   // intro/conclusion cutscene setup
-  if (CUTSCENE_GAME_STATES.Contains(currentGameState)) {
-    // Force spawning to see cutscene
-    ForcePlayerHero(EventPlayer(), Hero.Tracer);
-  }
+  // if (CUTSCENE_GAME_STATES.Contains(currentGameState)) {
+  //   // Force spawning to see cutscene
+  //   while (!HasSpawned()) {
+  //     ForcePlayerHero(EventPlayer(), Hero.Echo);
+  //     Wait(0.2);
+  //   }
+  // }
 }

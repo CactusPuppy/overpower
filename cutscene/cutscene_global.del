@@ -1,2 +1,4 @@
 globalvar Vector cutsceneCamPos;
 globalvar Vector cutsceneCamFac;
+
+// TODO: Load cutscene data

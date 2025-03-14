@@ -1,6 +1,5 @@
 enum GameState {
   NONE = "NONE",
-  INTRO = "INTRO",
   SELECTING_HEROES = "SELECTING_HEROES",
   GAMEPLAY = "GAMEPLAY",
   CONCLUSION = "CONCLUSION"
@@ -13,7 +12,6 @@ globalvar Team winningTeam;
 rule: "When game first boots, perform gamemode setup and move to intro phase"
 if (currentGameState == GameState.NONE)
 {
-  PauseMatchTime();
   WaitUntil(
     ContinueCondition: CountOf(AllPlayers(Team.Team1)) > 0
       && (CountOf(AllPlayers(Team.Team2)) > 0 || DEBUG_MODE)
@@ -36,6 +34,32 @@ if (IsMatchComplete())
   ReturnToLobby();
 }
 
+// =========== REACTIVE GAME LOGIC ===========
+
+rule: 'when gameplay in progress, alter objective description'
+if (currentGameState == GameState.GAMEPLAY)
+{
+  SetObjectiveDescription(
+    VisibleTo:        AllPlayers(),
+    // Header:             <"Showtime In: <0>:<1>",
+    //                     RoundToInteger(MatchTime() / 60, Rounding.Down),
+    //                     RoundToInteger(MatchTime() % 60, Rounding.Down) > 9
+    //                       ? RoundToInteger(MatchTime() % 60, Rounding.Down)
+    //                       : <"0<0>", RoundToInteger(MatchTime() % 60, Rounding.Down)>>,
+    Header:             "Showtime In",
+    Reevaluation:     HudTextRev.VisibleToAndString
+  );
+}
+
+rule: 'when time runs out, grant win to Team Talon'
+if (currentGameState == GameState.GAMEPLAY)
+if (MatchTime() == 0)
+if (winningTeam != null)
+{
+  GSM_Trigger(GameStateAction.TEAM_TALON_WIN);
+}
+
+
 // =========== STATE MACHINE ==============
 enum GameStateAction {
   NONE = "NONE",
@@ -47,7 +71,7 @@ enum GameStateAction {
   CONCLUSION_COMPLETE = "CONCLUSION_COMPLETE"
 }
 
-void GSM_Trigger(GameStateAction action) {
+void GSM_Trigger(in GameStateAction action) {
   gameStateAction = action;
   GameStateMachine();
 }
@@ -75,7 +99,7 @@ void GameStateMachine() "[gameFlow.del | SUB] advance game state"
 void GSM_GS_NONE() {
   switch (gameStateAction) {
     case GameStateAction.INIT_SETUP_COMPLETE:
-      currentGameState = GameState.INTRO;
+      currentGameState = GameState.SELECTING_HEROES;
       break;
   }
 }
@@ -91,9 +115,11 @@ void GSM_GS_SELECT_HERO() {
 void GSM_GS_GAMEPLAY() {
   switch (gameStateAction) {
     case GameStateAction.TEAM_LSF_WIN:
+      winningTeam = Team.Team1;
       currentGameState = GameState.CONCLUSION;
       break;
     case GameStateAction.TEAM_TALON_WIN:
+      winningTeam = Team.Team2;
       currentGameState = GameState.CONCLUSION;
       break;
   }

@@ -1,4 +1,6 @@
-Boolean IsPlayerHoveringSwitch(Player p = EventPlayer()): DoesLineIntersectSphere(p.EyePosition(), p.FacingDirection(), CurrentInteractionPoint(p).location, 0.5);
+Number SWITCH_RADIUS: 0.5;
+Boolean IsPlayerHoveringSwitch(Player p = EventPlayer()): DoesLineIntersectSphere(p.EyePosition(), p.FacingDirection(), CurrentInteractionPoint(p).location, SWITCH_RADIUS);
+
 
 rule: 'when a player presses interact and the nearest interact point is a switch, flip it'
 Event.OngoingPlayer
@@ -7,16 +9,19 @@ Player.All
 if (EventPlayer().IsButtonHeld(Button.Interact))
 {
   AbortIf(CurrentInteractionPoint().type != InteractableType.SWITCH);
+  AbortIf(CurrentInteractionPoint().GetDataValue("activated"));
   AbortIf(!IsPlayerHoveringSwitch());
-  if (DEBUG_MODE) LogToInspector($"Switch state: {interactionPoints[nearestInteractPointIndex].GetDataValue('activated')}");
-  CurrentInteractionPoint().SetDataValue("activated", !CurrentInteractionPoint().GetDataValue("activated"));
-  // PlayEffect()
+  CurrentInteractionPoint().SetDataValue("activated", true);
+  PlayEffect(AllPlayers(), PlayEffect.SombraTranslocatorDisappearSound, null, CurrentInteractionPoint().location, 100);
+  ModifyTeamScore(Team.Team1, 1);
 }
 
 rule: 'prompt player to press interact to flip the switch'
 {
   CreateInWorldText(
-    VisibleTo: CurrentInteractionPoint(LocalPlayer()).type == InteractableType.SWITCH && IsPlayerHoveringSwitch(LocalPlayer()) ? LocalPlayer() : null,
+    VisibleTo: LocalPlayer().Team() == Team.Team1
+      && CurrentInteractionPoint(LocalPlayer()).type == InteractableType.SWITCH
+      && IsPlayerHoveringSwitch(LocalPlayer()) ? LocalPlayer() : null,
     Header: <"<0>: <2> <1>", InputBindingString(Button.Interact), IconString(Icon.Bolt), @"on">,
     Position: CurrentInteractionPoint(LocalPlayer()).location,
     Scale: 1,
@@ -24,4 +29,13 @@ rule: 'prompt player to press interact to flip the switch'
     Reevaluation: InworldTextRev.VisibleToPositionAndString,
     Spectators: Spectators.VisibleNever
   );
+}
+
+rule: "[interaction/types/switch.del] Create switch interaction effects"
+{
+  for (i = 0; possibleSwitchLocations.Length; 1) {
+    NewInteractionPoint(possibleSwitchLocations[i], InteractableType.SWITCH);
+    if (DEBUG_MODE && RandomReal(0, 1) < 0.5) interactionPoints[EvaluateOnce(i)].SetDataValue("activated", true);
+  }
+  LogToInspector($"Effect Count: {EntityCount()}");
 }

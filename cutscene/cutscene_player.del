@@ -1,9 +1,16 @@
-rule: "[cutscene/cutscene_player.del] Handle cutscene logic"
+import "../lib/OSTWUtils/ButtonControl.del";
+
+disabled rule: "[cutscene/cutscene_player.del] Handle cutscene logic"
 Event.OngoingPlayer
-if (HasSpawned())
 if (CUTSCENE_GAME_STATES.Contains(currentGameState))
 {
-  // DisableTextChat(EventPlayer());
+  // ForcePlayerHero(EventPlayer(), Hero.Echo);
+  # Only hide players for introductory cutscene
+  if ([GameState.NONE, GameState.INTRO].Contains(currentGameState)) {
+    SetInvisible(EventPlayer(), InvisibleTo.All);
+    StartForcingPlayerPosition(EventPlayer(), Vector(0, 100, 0));
+  }
+  AddOneLockToAllButtons();
   DisableScoreboard(EventPlayer());
   DisableGameModeHud();
   DisableHeroHud();
@@ -11,10 +18,16 @@ if (CUTSCENE_GAME_STATES.Contains(currentGameState))
 
   WaitUntil(!CUTSCENE_GAME_STATES.Contains(currentGameState), 1000000);
 
+  SetInvisible(EventPlayer(), InvisibleTo.None);
+  StopForcingPlayerPosition();
+  RemoveOneLockFromAllButtons();
   EnableTextChat(EventPlayer());
   EnableScoreboard(EventPlayer());
   EnableGameModeHud();
   EnableHeroHud();
   StopForcingHero(EventPlayer());
+
+  # Wait a quarter of a second to allow clients to know if they are in assembling heroes
+  if (currentGameState == GameState.SELECTING_HEROES) Wait(0.25);
   StopCamera();
 }

@@ -1,20 +1,52 @@
 globalvar Boolean DEBUG_MODE = WorkshopSettingToggle("99. DEBUG MODE", "DEBUG MODE ENABLED", true, -100);
 
-disabled rule: "Create DEBUG huds"
+import "lib/OSTWUtils/Diagnostics.del";
+rule: "Create DEBUG huds"
 if (DEBUG_MODE)
-if (IsGameInProgress())
 {
-  LogToInspector("Game In Progress");
-  SetMatchTime(10);
-  WaitUntil(MatchTime() == 0, 10);
-  DeclareTeamVictory(Team.Team1);
+  new Diagnostics(
+    VisibleToHostOnly:      true,
+    ShowServerLoad:         true,
+    ShowServerLoadPeak:     true,
+    ShowEntityCount:        true,
+    PlayMoreEffectsEnabled: true,
+  );
+  WaitForeverUntil(IsGameInProgress());
+  LogToInspector($"Effect Count: {EntityCount()}");
 }
 
-rule: "Create some debug interactions"
+rule: "[debug.del] When host player melees in debug mode, issue an order to advance game state"
 if (DEBUG_MODE)
+if (HostPlayer().IsButtonHeld(Button.Melee))
 {
-  for (Number i = 0; possibleSwitchLocations.Length; 1) {
-    NewInteractionPoint(possibleSwitchLocations[i], InteractableType.SWITCH);
-    if (RandomReal(0, 1) < 0.5) interactionPoints[EvaluateOnce(i)].SetDataValue("activated", true);
+  switch (currentGameState) {
+    case GameState.SELECTING_HEROES:
+      GSM_Trigger(GameStateAction.SELECTING_HEROES_COMPLETE);
+      break;
+    case GameState.GAMEPLAY:
+      GSM_Trigger(GameStateAction.TEAM_LSF_WIN);
+      break;
+    case GameState.CONCLUSION:
+      GSM_Trigger(GameStateAction.CONCLUSION_COMPLETE);
+      break;
   }
+  Wait(0.064);
+}
+
+rule: "[debug.del] Reduce match time in assembling heroes"
+if (DEBUG_MODE)
+if (IsAssemblingHeroes())
+{
+  SetMatchTime(5);
+}
+
+rule: "[debug.del] Give ult faster"
+Event.OngoingPlayer
+if (DEBUG_MODE)
+if (HasSpawned())
+if (UltimateChargePercent() < 100)
+{
+  SetUltimateCharge(EventPlayer(), 100);
+  Wait(0.25);
+  LoopIfConditionIsTrue();
 }

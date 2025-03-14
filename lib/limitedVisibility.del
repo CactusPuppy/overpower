@@ -1,0 +1,53 @@
+playervar Boolean hasLimitedVision = true;
+
+Number VIS_SPHERE_COUNT: 75;
+Number VIS_CONE_COUNT: 30;
+Number VIS_START_DISTANCE: 10;
+Number VIS_FADE_DISTANCE: 10;
+Number VIS_END_DISTANCE: VIS_START_DISTANCE + VIS_FADE_DISTANCE;
+
+rule: "Creating vision helpers"
+{
+  for (i = 0; VIS_SPHERE_COUNT; 1)
+  {
+    Number strength: (i / VIS_SPHERE_COUNT) <= 0.85 ? CosineFromDegrees(i / (VIS_SPHERE_COUNT * 0.85) * 90) : 1;
+
+    CreateEffect(
+      VisibleTo:      LocalPlayer().hasLimitedVision ? LocalPlayer() : null,
+      Type:           Effect.Sphere,
+      Color:          Color.Black,
+      Position:       UpdateEveryFrame(EyePosition(LocalPlayer())),
+      Radius:         EvaluateOnce(VIS_START_DISTANCE + strength * VIS_FADE_DISTANCE),
+      Reevaluation:   EffectRev.VisibleToPositionAndRadius);
+  }
+}
+
+rule: "Creating vision helpers 2"
+{
+  for (i = 0; VIS_CONE_COUNT; 1)
+  {
+    CreateEffect(LocalPlayer().hasLimitedVision ? LocalPlayer() : null, Effect.GoodAura, Color.Black, UpdateEveryFrame(EyePosition(LocalPlayer()) + FacingDirectionOf(LocalPlayer()) * 0.75), 1, EffectRev.VisibleToPositionAndRadius);
+  }
+}
+
+rule: "remove outline of player from other players who are too far away"
+Event.OngoingPlayer
+if (HasSpawned(EventPlayer()) == true)
+if (IsAlive(EventPlayer()) == true)
+if (hasLimitedVision)
+{
+  Number distance: VIS_START_DISTANCE + VIS_FADE_DISTANCE * 0.15;
+
+  Player[] _playersTooFar: AllPlayers().Filter((p) => DistanceBetween(EventPlayer(), p) > distance);
+  Player[] playersTooFar = _playersTooFar;
+
+  StartForcingPlayerOutlines(EventPlayer(), playersTooFar, false);
+  DisableNameplates(EventPlayer(), playersTooFar);
+
+  WaitForeverUntil(_playersTooFar != playersTooFar || !hasLimitedVision);
+
+  StopForcingPlayerOutlines(EventPlayer(), AllPlayers());
+  EnableNameplates(EventPlayer(), playersTooFar);
+
+  LoopIfConditionIsTrue();
+}

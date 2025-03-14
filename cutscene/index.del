@@ -1,5 +1,5 @@
 GameState[] CUTSCENE_GAME_STATES: [
-  GameState.INTRO,
+  GameState.NONE,
   GameState.CONCLUSION
 ];
 
