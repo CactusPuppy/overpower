@@ -1,0 +1,95 @@
+playervar Number batteryInteractionIndex = -1;
+playervar Any batteryEffectID!;
+
+globalvar Number batteriesDelivered;
+
+Number BATTERY_SOURCE_RADIUS: 0.5; // FIXME: Reference size of Bastion nade
+Number BATTERY_PICKUP_TIME: 3;
+
+Boolean IsPlayerHoveringBatterySource(Player p = EventPlayer()): DoesLineIntersectSphere(p.EyePosition(), p.FacingDirection(), CurrentInteractionPoint(p).location, BATTERY_SOURCE_RADIUS);
+
+// TODO: Set an offset for all heroes on Team LSF
+Vector BATTERY_OFFSET(Player p = EventPlayer()): [Backward(),
+  Backward() * 0.75
+][[
+  Hero.Tracer
+].IndexOf(EffectiveHero(p)) + 1];
+
+rule: "[interaction/types/battery.del] Initialize all battery dispensers"
+{
+  for (i = 0; batteryDispenserLocations; 1) {
+    NewInteractionPoint(batteryDispenserLocations[i], InteractableType.BATTERY_SOURCE);
+    interactionPoints.Last.SetDataValue("has_battery", true);
+  }
+}
+
+void HandleBatteryInteract() {
+  if (CurrentInteractionPoint().type == InteractableType.BATTERY_SOURCE) AbortIf(!CurrentInteractionPoint().GetDataValue("has_battery"));
+  if (CurrentInteractionPoint().type == InteractableType.BATTERY_RECEIVER) AbortIf(CurrentInteractionPoint().GetDataValue("has_battery"));
+  AbortIf(!IsPlayerHoveringBatterySource());
+
+  batteryInteractionIndex = nearestInteractPointIndex;
+  StartChanneling(BATTERY_PICKUP_TIME);
+  SetStatus(EventPlayer(), null, Status.Rooted, BATTERY_PICKUP_TIME);
+  StartCamWith1PTransition(
+    player:         EventPlayer(),
+    eyePosition:    RayCastHitPosition(
+      StartPOS:           EyePosition(EventPlayer()),
+      EndPOS:             EyePosition(EventPlayer())
+                            + -5 * FacingDirectionOf(EventPlayer())
+                            + Up(),
+      PlayersToInclude:   null,
+      PlayersToExclude:   AllPlayers()
+    ),
+    lookAtPosition: (EyePosition(EventPlayer()) + interactionPoints[batteryInteractionIndex].location) / 2);
+
+  WaitUntil(
+    ContinueCondition:    !IsButtonHeld(EventPlayer(), Button.Interact)
+                            || batteryInteractionIndex != nearestInteractPointIndex
+                            || channelProgress == 100
+                            || channelState == ChannelState.INTERRUPTED,
+    Timeout:              BATTERY_PICKUP_TIME);
+
+  StopCamWith1PTransition(
+    player:         EventPlayer(),
+    eyePosition:    RayCastHitPosition(
+      StartPOS:           EyePosition(EventPlayer()),
+      EndPOS:             EyePosition(EventPlayer())
+                            + -5 * FacingDirectionOf(EventPlayer())
+                            + Up(),
+      PlayersToInclude:   null,
+      PlayersToExclude:   AllPlayers()
+    ),
+    lookAtPosition: (EyePosition(EventPlayer()) + interactionPoints[batteryInteractionIndex].location) / 2
+  );
+  ClearStatus(EventPlayer(), Status.Rooted);
+  # Successful battery channel
+  if (channelProgress == 100) {
+    if (interactionPoints[batteryInteractionIndex].type == InteractableType.BATTERY_SOURCE) {
+      interactionPoints[batteryInteractionIndex].SetDataValue("has_battery", false);
+    } else if (interactionPoints[batteryInteractionIndex].type == InteractableType.BATTERY_RECEIVER) {
+      interactionPoints[batteryInteractionIndex].SetDataValue("has_battery", true);
+      batteryInteractionIndex = -1;
+    }
+
+    CSM_Trigger(ChannelStateAction.COMPLETE_CHANNELING);
+    return;
+  }
+}
+
+rule: "[interaction/types/battery.del] When player has a battery, create an effect on their back"
+Event.OngoingPlayer
+if (batteryInteractionIndex != -1)
+{
+  batteryEffectID = CreateProjectileEffect(
+    VisibleTo:          AllPlayers().Remove(EventPlayer()),
+    ProjectileType:     ProjectileType.BastionA36TacticalGrenade,
+    FriendlyTo:         AllPlayers(Team.Team1),
+    Position:           UpdateEveryFrame(BATTERY_OFFSET(EventPlayer())
+                          + 0.5 * (EyePosition(EventPlayer()) - PositionOf(EventPlayer()))),
+    Direction:          Up(),
+    Oversize:           0,
+    Reevaluation:       ProjectileEffectReeval.VisibleToFriendlyToPositionDirectionAndSize);
+  WaitForeverUntil(batteryInteractionIndex == -1);
+  DestroyEffect(batteryEffectID);
+}

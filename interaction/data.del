@@ -1,6 +1,5 @@
 // Switch locations
-globalvar Vector[] possibleSwitchLocations = [
-  Vector(-43.14, 6.20, -135.98),
+globalvar Vector[] switchLocations = [
   Vector(-21.91, 7.18, -147.75),
   Vector(-15.14, 10.24, -145.53),
   Vector(-35.73, 6.12, -103.06),
@@ -9,7 +8,6 @@ globalvar Vector[] possibleSwitchLocations = [
   Vector(-7.73, 2.92, -137.16),
   Vector(14.52, 8.86, -77.93),
   Vector(35.51, 9.33, -93.22),
-  Vector(54.41, 9.89, -99.36),
   Vector(83.86, 8.66, -58.84),
   Vector(34.19, 9.31, -77.26),
   Vector(39.28, 15.41, -49.94),
@@ -20,6 +18,13 @@ globalvar Vector[] possibleSwitchLocations = [
   Vector(16.35, 7.97, -112.50),
   Vector(6.51, 7.06, -107.86)
 ];
-Number NUM_SWITCHES: 12;
 
+globalvar Vector[] batteryDispenserLocations = [
+  Vector(-43.14, 6.20, -135.98)
+  // TODO: Add more dispenser locations
+];
 
+globalvar Vector[] batteryReceptacleLocations = [
+  Vector(54.41, 9.89, -99.36)
+  // TODO: Add more receptacle locations
+];

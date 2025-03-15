@@ -1,0 +1,76 @@
+/**
+  * ! NOTES ABOUT USING THIS MODULE:
+  * ! - The code which initiated a channel is responsible for detecting when channelProgress
+  * !   reaches 100, and **MUST** issue a COMPLETE_CHANNELING action once it is done.
+  * ! - The parent code is also responsible for listening for when interruption occurs via
+  * !   the INTERRUPTED channel state.
+*/
+
+playervar Number nextChannelDuration;
+playervar Number channelProgress;
+playervar ChannelState channelState = ChannelState.NONE;
+playervar ChannelStateAction channelStateAction;
+
+Number INTERRUPT_DURATION: 0.5;
+
+enum ChannelState {
+  NONE = "NONE",
+  CHANNELING = "CHANNELING",
+  INTERRUPTED = "INTERRUPTED"
+}
+
+enum ChannelStateAction {
+  NONE = "NONE",
+  BEGIN_CHANNELING = "BEGIN_CHANNELING",
+  INTERRUPTED = "INTERRUPTED",
+  INTERRUPT_EXPIRE = "INTERRUPT_EXPIRE",
+  COMPLETE_CHANNELING = "COMPLETE_CHANNELING"
+}
+
+import "../lib/OSTWUtils/StatusEffects.del";
+
+void StartChanneling(in Number duration = 1) {
+  nextChannelDuration = duration;
+  CSM_Trigger(ChannelStateAction.BEGIN_CHANNELING);
+}
+
+// ======== STATE MACHINE ========
+void CSM_Trigger(in ChannelStateAction action) {
+  channelStateAction = action;
+  ChannelStateMachine();
+}
+void ChannelStateMachine() playervar "[player/channel.del | SUB] handle channel"
+{
+  if (DEBUG_MODE) {
+    LogToInspector($"CSM_Enter for {EventPlayer()}: ChannelState {channelState} | Action: {channelStateAction}");
+    switch (channelState) {
+      case ChannelState.NONE:
+      # ChannelState.NONE
+        if (channelStateAction == ChannelStateAction.BEGIN_CHANNELING) {
+          ChaseVariableOverTime(channelProgress, 100, nextChannelDuration, TimeChaseReevaluation.None);
+          channelState = ChannelState.CHANNELING;
+        }
+        break;
+      case ChannelState.CHANNELING:
+      # ChannelState.CHANNELING
+        if (channelStateAction == ChannelStateAction.INTERRUPTED) {
+          StopChasingVariable(channelProgress);
+          channelState = ChannelState.INTERRUPTED;
+          WaitAsync(INTERRUPT_DURATION, () => {
+            CSM_Trigger(ChannelStateAction.INTERRUPT_EXPIRE);
+          });
+        } else if (channelStateAction == ChannelStateAction.COMPLETE_CHANNELING) {
+          channelProgress = 0;
+          channelState = ChannelState.NONE;
+        }
+        break;
+      case ChannelState.INTERRUPTED:
+      # ChannelState.INTERRUPTED
+        if (channelStateAction == ChannelStateAction.INTERRUPT_EXPIRE) {
+          channelProgress = 0;
+          channelState = ChannelState.NONE;
+        }
+        break;
+    }
+  }
+}

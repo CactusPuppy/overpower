@@ -14,7 +14,7 @@ rule: "Global setup"
   CreateHudText(
     VisibleTo:        AllPlayers(),
     Text:             <" <0><1>",
-                        AllPlayers().Contains(LocalPlayer()) ? "" : "\n\n\n",
+                        AllPlayers().Length > 0 && AllPlayers().Contains(LocalPlayer()) ? "" : "\n\n\n",
                         "\n\n\n\n\n\n\n">,
     Location:         Location.Left,
     SortOrder:        -1,

@@ -3,7 +3,7 @@ settings
 	main
 	{
 		Description: "Scramble to get the power back on before the big concert, or snuff out the lights for good in this asymmetric hide-and-go-seek PvP mode!\nBy CactusPuppy\nCommissioned by Blizzard Entertainment"
-		Mode Name: "OverPower"
+		Mode Name: "Over:Power"
 	}
 
 	lobby
@@ -69,6 +69,7 @@ globalvar Number i;
 import "./setup.del";
 import "interaction/index.del";
 import "hero/index.del";
+import "player/index.del";
 // import "cutscene/index.del";
 
 

@@ -7,6 +7,8 @@ enum InteractableType {
   GENERATOR
 }
 
+globalvar InteractionPoint[] interactionPoints = [];
+
 globalvar Number nextInteractPointId = 1;
 globalvar Dictionary<String, Any> interactionData = {
   Keys: [],
@@ -20,10 +22,21 @@ single struct InteractionPoint {
   public void CreateEffects() {
     switch (type) {
       case InteractableType.SIMPLE:
+      # InteractableType.SIMPLE
         CreateEffect(AllPlayers(), Effect.Ring, Color.Orange, location, INTERACT_RADIUS, EffectRev.VisibleTo);
         break;
       case InteractableType.SWITCH:
-        CreateEffect(AllPlayers(), Effect.Sphere, GetDataValue($"activated") ? Color.Green : Color.Red, EvaluateOnce(location), SWITCH_RADIUS, EffectRev.VisibleToAndColor);
+      # InteractableType.SWITCH
+        CreateEffect(AllPlayers(), Effect.Sphere, GetDataValue("activated") ? Color.Green : Color.Red, EvaluateOnce(location), SWITCH_RADIUS, EffectRev.VisibleToAndColor);
+        break;
+      case InteractableType.BATTERY_SOURCE:
+      # InteractableType.BATTERY_SOURCE
+        CreateProjectileEffect(AllPlayers(), ProjectileType.BastionA36TacticalGrenade, AllPlayers(Team.Team1), location, Up(), 0.1, ProjectileEffectReeval.VisibleToFriendlyTo);
+        SetDataValue("effect_id", LastCreatedEntity());
+        break;
+      case InteractableType.BATTERY_RECEIVER:
+      # InteractableType.BATTERY_RECEIVER
+        // CreateEffect()
         break;
     }
   }
@@ -54,7 +67,6 @@ InteractionPoint NearestInteractionPoint(Player player = EventPlayer()): interac
 
 Number NearestInteractionPointIndex(Player player = EventPlayer()): interactionPoints.Map(_ => CurrentArrayIndex()).Sort(index => interactionPoints[index].location.DistanceTo(player.EyePosition())).First;
 
-globalvar InteractionPoint[] interactionPoints = [];
 
 Number INTERACT_RADIUS: 3;
 
@@ -69,13 +81,35 @@ if (interactionPoints.IsTrueForAny(
 ))
 {
   nearestInteractPointIndex = NearestInteractionPointIndex();
-  if (DEBUG_MODE) SmallMessage(EventPlayer(), $"Walked near an interactable! NIPI: {nearestInteractPointIndex}");
+  // if (DEBUG_MODE) SmallMessage(EventPlayer(), $"Walked near an interactable! NIPI: {nearestInteractPointIndex}");
   WaitUntil(CurrentInteractionPoint().id != NearestInteractionPoint().id
     || interactionPoints.All(point => !IsPointInteractable(point)),
     Timeout: 1000000);
-  if (interactionPoints.All(point => !IsPointInteractable(point))) {
+  if (!interactionPoints.Any(point => IsPointInteractable(point))) {
     nearestInteractPointIndex = -1;
   }
   MinWait();
   LoopIfConditionIsTrue();
+}
+
+rule: 'when a player presses interact, dispatch to the right interaction point handler if needed'
+Event.OngoingPlayer
+Team.Team1
+Player.All
+if (EventPlayer().IsButtonHeld(Button.Interact))
+{
+  AbortIf(IsDead() || !HasSpawned());
+  AbortIf(nearestInteractPointIndex == -1);
+  switch (CurrentInteractionPoint().type) {
+    case InteractableType.SIMPLE:
+      SmallMessage(EventPlayer(), "Interacted with simple interactable!");
+      break;
+    case InteractableType.SWITCH:
+      HandleSwitchInteract();
+      break;
+    case InteractableType.BATTERY_SOURCE:
+    case InteractableType.BATTERY_RECEIVER:
+      HandleBatteryInteract();
+      break;
+  }
 }

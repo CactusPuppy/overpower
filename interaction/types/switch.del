@@ -1,41 +1,56 @@
 Number SWITCH_RADIUS: 0.5;
 Boolean IsPlayerHoveringSwitch(Player p = EventPlayer()): DoesLineIntersectSphere(p.EyePosition(), p.FacingDirection(), CurrentInteractionPoint(p).location, SWITCH_RADIUS);
+Number NUM_SWITCHES: switchLocations.Length;
+globalvar Number switchesFlipped;
 
 
-rule: 'when a player presses interact and the nearest interact point is a switch, flip it'
-Event.OngoingPlayer
-Team.Team1
-Player.All
-if (EventPlayer().IsButtonHeld(Button.Interact))
-{
-  AbortIf(CurrentInteractionPoint().type != InteractableType.SWITCH);
+void HandleSwitchInteract() {
   AbortIf(CurrentInteractionPoint().GetDataValue("activated"));
   AbortIf(!IsPlayerHoveringSwitch());
   CurrentInteractionPoint().SetDataValue("activated", true);
   PlayEffect(AllPlayers(), PlayEffect.SombraTranslocatorDisappearSound, null, CurrentInteractionPoint().location, 100);
   ModifyTeamScore(Team.Team1, 1);
+  switchesFlipped += 1;
 }
 
-rule: 'prompt player to press interact to flip the switch'
+rule: "[interaction/types/switch.del] Initialize switches"
+{
+  for (i = 0; switchLocations.Length; 1) {
+    NewInteractionPoint(switchLocations[i], InteractableType.SWITCH);
+    if (DEBUG_MODE && RandomReal(0, 1) < 0.5) {
+      interactionPoints.Last.SetDataValue("activated", true);
+      switchesFlipped += 1;
+    }
+  }
+}
+
+String EMPTY_SQUARES: "--------------------------------------------------------------------------------------------------------------------------------";
+String FILLED_SQUARES: "================================================================================================================================";
+
+rule: '[interaction/types/switch.del] prompt player to press interact to flip the switch'
 {
   CreateInWorldText(
     VisibleTo: LocalPlayer().Team() == Team.Team1
       && CurrentInteractionPoint(LocalPlayer()).type == InteractableType.SWITCH
       && IsPlayerHoveringSwitch(LocalPlayer()) ? LocalPlayer() : null,
-    Header: <"<0>: <2> <1>", InputBindingString(Button.Interact), IconString(Icon.Bolt), @"on">,
+    Header: <"<1> <2> <0>", InputBindingString(Button.Interact), IconString(Icon.Bolt), GameMode.Push>,
     Position: CurrentInteractionPoint(LocalPlayer()).location,
-    Scale: 1,
+    Scale: 2,
     Clipping: Clipping.DoNotClip,
     Reevaluation: InworldTextRev.VisibleToPositionAndString,
     Spectators: Spectators.VisibleNever
   );
 }
 
-rule: "[interaction/types/switch.del] Create switch interaction effects"
+rule: "[interaction/types/switch.del] Show switch progress"
 {
-  for (i = 0; possibleSwitchLocations.Length; 1) {
-    NewInteractionPoint(possibleSwitchLocations[i], InteractableType.SWITCH);
-    if (DEBUG_MODE && RandomReal(0, 1) < 0.5) interactionPoints[EvaluateOnce(i)].SetDataValue("activated", true);
-  }
-  LogToInspector($"Effect Count: {EntityCount()}");
+  CreateHudText(
+    VisibleTo: AllPlayers(),
+    Subheader: <"<0> <1>/<2>", IconString(Icon.Bolt), switchesFlipped, NUM_SWITCHES>,
+    Text: StringSlice(FILLED_SQUARES, 0, switchesFlipped) + StringSlice(EMPTY_SQUARES, 0, NUM_SWITCHES - switchesFlipped),
+    SubheaderColor: Color.White,
+    TextColor: Color.LimeGreen,
+    Location: Location.Left,
+    Reevaluation: HudTextRev.VisibleToAndString
+  );
 }
