@@ -1,5 +1,5 @@
 String DEBUG_MODE_CATEGORY: "99. DEBUG MODE";
-globalvar Boolean DEBUG_MODE = WorkshopSettingToggle(DEBUG_MODE_CATEGORY, "DEBUG MODE ENABLED", true, -100);
+globalvar Boolean DEBUG_MODE = WorkshopSettingToggle(DEBUG_MODE_CATEGORY, "DEBUG MODE ENABLED", false, -100);
 
 import "lib/OSTWUtils/Diagnostics.del";
 rule: "Create DEBUG huds"
