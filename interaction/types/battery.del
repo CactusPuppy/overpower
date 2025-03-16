@@ -34,6 +34,7 @@ rule: "[interaction/types/battery.del] Initialize all battery receptacles"
     NewInteractionPoint(batteryReceptacleLocations[i], InteractableType.BATTERY_RECEIVER);
     CreateIcon(interactionPoints[EvaluateOnce(interactionPoints.Length - 1)].GetDataValue("has_battery") ? null : AllPlayers().Filter(p => hasBattery(p)), batteryReceptacleLocations[EvaluateOnce(i)], Icon.Flag, IconRev.VisibleTo, Color.Orange, true);
     interactionPoints[i].SetDataValue("flag_icon", LastCreatedEntity());
+    interactionPoints[i].SetDataValue("has_battery", false);
   }
 }
 
@@ -208,15 +209,31 @@ rule: '[interaction/types/switch.del] prompt player to hold interact to pull a b
   // if (DEBUG_MODE) {
   //   CreateHudText(
   //     VisibleTo: LocalPlayer(),
-  //     Header: $"hover: {IsPlayerHoveringBatterySource(LocalPlayer())} | has_battery: {(CurrentInteractionPoint(LocalPlayer()).type == InteractableType.BATTERY_RECEIVER) != CurrentInteractionPoint(LocalPlayer()).GetDataValue("has_battery")}",
+  //     Header: $"source_battery?: {CurrentInteractionPoint(LocalPlayer()).GetDataValue('has_battery')} | self_battery?: {hasBattery(LocalPlayer())} | result: {CurrentInteractionPoint(LocalPlayer()).GetDataValue('has_battery') != hasBattery(LocalPlayer())}",
   //     Reevaluation: HudTextRev.VisibleToAndString
   //   );
   // }
   CreateInWorldText(
     VisibleTo: LocalPlayer().Team() == Team.Team1
-      && ([InteractableType.BATTERY_SOURCE, InteractableType.BATTERY_RECEIVER].Contains(CurrentInteractionPoint(LocalPlayer()).type))
+      && (InteractableType.BATTERY_SOURCE == CurrentInteractionPoint(LocalPlayer()).type)
       && IsPlayerHoveringBatterySource(LocalPlayer())
-      && ((CurrentInteractionPoint(LocalPlayer()).type == InteractableType.BATTERY_SOURCE) != hasBattery(LocalPlayer()))
+      && !hasBattery(LocalPlayer())
+      && CurrentInteractionPoint(LocalPlayer()).GetDataValue('has_battery')
+        ? LocalPlayer() : null,
+    Header: <"<1> Hold <0>", InputBindingString(Button.Interact), AbilityIconString(Hero.Ana, Button.Ability2)>,
+    TextColor: Color.White,
+    Position: CurrentInteractionPoint(LocalPlayer()).location + Up() * BATTERY_SOURCE_RADIUS,
+    Scale: 2,
+    Clipping: Clipping.DoNotClip,
+    Reevaluation: InworldTextRev.VisibleToPositionAndString,
+    Spectators: Spectators.VisibleNever
+  );
+  CreateInWorldText(
+    VisibleTo: LocalPlayer().Team() == Team.Team1
+      && (InteractableType.BATTERY_RECEIVER == CurrentInteractionPoint(LocalPlayer()).type)
+      && IsPlayerHoveringBatterySource(LocalPlayer())
+      && hasBattery(LocalPlayer())
+      && !CurrentInteractionPoint(LocalPlayer()).GetDataValue('has_battery')
         ? LocalPlayer() : null,
     Header: <"<1> Hold <0>", InputBindingString(Button.Interact), AbilityIconString(Hero.Ana, Button.Ability2)>,
     TextColor: Color.White,
