@@ -21,6 +21,7 @@ settings
 		{
 			Game Length In Minutes: 10
 			Self Initiated Respawn: Off
+			Enable Perks: On
 			enabled maps
 			{
 				Horizon Lunar Colony
