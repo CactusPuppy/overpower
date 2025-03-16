@@ -75,6 +75,7 @@ rule: "Global setup"
 rule: "Player setup"
 Event.OnPlayerJoin
 {
+  WaitForeverUntil(currentGameState == GameState.GAMEPLAY);
   DisableGameModeHud(EventPlayer());
   SetObjectiveDescription(EventPlayer(), "Showtime In");
 }
