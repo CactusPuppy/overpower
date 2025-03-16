@@ -1,15 +1,49 @@
+String GENERAL_SETTINGS_CATEGORY: "1. Settings";
+
+globalvar Number NEEDED_SWITCHES_RATIO = WorkshopSettingReal(GENERAL_SETTINGS_CATEGORY, "% Switches Needed To Be Flipped", 100, 0, 100) / 100;
+globalvar Number NEEDED_BATTERIES_RATIO = WorkshopSettingReal(GENERAL_SETTINGS_CATEGORY, "% Batteries Needed To Be Delivered", 100, 0, 100) / 100;
+
+Number NEEDED_SWITCHES: NUM_SWITCHES * NEEDED_SWITCHES_RATIO;
+Number NEEDED_BATTERIES: NUM_BATTERIES * NEEDED_BATTERIES_RATIO;
+
 rule: "Global setup"
 {
-  // CreateHudText(
-  //   VisibleTo:      AllPlayers(),
-  //   Text:           " \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
-  //   Location:       Location.Top,
-  //   SortOrder:      0.1,
-  //   TextColor:      CustomColor(0,0,0,0),
-  //   Reevaluation:   HudTextRev.VisibleTo,
-  //   Spectators:     Spectators.VisibleAlways);
+  # Replacement gamemode HUD
+  CreateHudText(
+    VisibleTo:      AllPlayers(),
+    Subheader:      "Showtime In",
+    Location:       Location.Top,
+    SortOrder:      -1,
+    Reevaluation:   HudTextRev.VisibleTo
+  );
+  CreateHudText(
+    VisibleTo:      AllPlayers(),
+    Text:           <"<0>:<1>",
+                      RoundToInteger(MatchTime() / 60, Rounding.Down),
+                      RoundToInteger(MatchTime() % 60, Rounding.Down) > 9
+                        ? RoundToInteger(MatchTime() % 60, Rounding.Down)
+                        : <"0<0>", RoundToInteger(MatchTime() % 60, Rounding.Down)>>,
+    Location:       Location.Top,
+    SortOrder:      0,
+    TextColor:      MatchTime() < 30
+                      ? Color.Red
+                      : MatchTime() < 60
+                        ? Color.Orange
+                        : Color.White,
+    Reevaluation:   HudTextRev.VisibleToStringAndColor
+  );
+  # Spacer to allow centering of certain elements
+  CreateHudText(
+    VisibleTo:      AllPlayers(),
+    Text:           " \n\n\n\n\n\n\n\n",
+    Location:       Location.Top,
+    SortOrder:      10,
+    TextColor:      CustomColor(0,0,0,0),
+    Reevaluation:   HudTextRev.VisibleTo,
+    Spectators:     Spectators.VisibleAlways);
   DisableCompletion();
   DisableScoring();
+  SetTeamScore(Team.Team1, -(NUM_SWITCHES * NEEDED_SWITCHES_RATIO) - NUM_BATTERIES);
   # Spacer text
   CreateHudText(
     VisibleTo:        AllPlayers(),
@@ -22,17 +56,25 @@ rule: "Global setup"
     Reevaluation:     HudTextRev.VisibleTo,
     Spectators:       Spectators.VisibleAlways
   );
+  CreateHudText(
+    VisibleTo:        AllPlayers(),
+    Text:             "\n",
+    Location:         Location.Left,
+    SortOrder:        1.5,
+    TextColor:        null,
+    Reevaluation:     HudTextRev.VisibleTo,
+    Spectators:       Spectators.VisibleAlways
+  );
+
+  WaitForeverUntil(IsGameInProgress());
+  Wait(0.25);
+  # Force a resync of time elapsed maybe?
+  SetMatchTime(MatchTime());
 }
 
 rule: "Player setup"
 Event.OnPlayerJoin
 {
-  // intro/conclusion cutscene setup
-  // if (CUTSCENE_GAME_STATES.Contains(currentGameState)) {
-  //   // Force spawning to see cutscene
-  //   while (!HasSpawned()) {
-  //     ForcePlayerHero(EventPlayer(), Hero.Echo);
-  //     Wait(0.2);
-  //   }
-  // }
+  DisableGameModeHud(EventPlayer());
+  SetObjectiveDescription(EventPlayer(), "Showtime In");
 }

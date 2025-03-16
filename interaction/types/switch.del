@@ -17,22 +17,24 @@ rule: "[interaction/types/switch.del] Initialize switches"
 {
   for (i = 0; switchLocations.Length; 1) {
     NewInteractionPoint(switchLocations[i], InteractableType.SWITCH);
-    if (DEBUG_MODE && RandomReal(0, 1) < 0.5) {
-      interactionPoints.Last.SetDataValue("activated", true);
-      switchesFlipped += 1;
-    }
+    // if (DEBUG_MODE && RandomReal(0, 1) < 0.5) {
+    //   interactionPoints.Last.SetDataValue("activated", true);
+    //   switchesFlipped += 1;
+    // }
   }
 }
 
-String EMPTY_SQUARES: "--------------------------------------------------------------------------------------------------------------------------------";
-String FILLED_SQUARES: "================================================================================================================================";
+String EMPTY_SQUARES: '□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□□';
+String FILLED_SQUARES: '■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■';
 
 rule: '[interaction/types/switch.del] prompt player to press interact to flip the switch'
 {
   CreateInWorldText(
     VisibleTo: LocalPlayer().Team() == Team.Team1
       && CurrentInteractionPoint(LocalPlayer()).type == InteractableType.SWITCH
-      && IsPlayerHoveringSwitch(LocalPlayer()) ? LocalPlayer() : null,
+      && IsPlayerHoveringSwitch(LocalPlayer())
+      && !CurrentInteractionPoint(LocalPlayer()).GetDataValue("activated")
+        ? LocalPlayer() : null,
     Header: <"<1> <2> <0>", InputBindingString(Button.Interact), IconString(Icon.Bolt), GameMode.Push>,
     Position: CurrentInteractionPoint(LocalPlayer()).location,
     Scale: 2,
@@ -46,11 +48,14 @@ rule: "[interaction/types/switch.del] Show switch progress"
 {
   CreateHudText(
     VisibleTo: AllPlayers(),
-    Subheader: <"<0> <1>/<2>", IconString(Icon.Bolt), switchesFlipped, NUM_SWITCHES>,
-    Text: StringSlice(FILLED_SQUARES, 0, switchesFlipped) + StringSlice(EMPTY_SQUARES, 0, NUM_SWITCHES - switchesFlipped),
-    SubheaderColor: Color.White,
-    TextColor: Color.LimeGreen,
+    Text: <"<0> <1><3>fg636363FF> / <2><4>", IconString(Icon.Bolt), Math.Clamp(switchesFlipped, 0, NEEDED_SWITCHES), NEEDED_SWITCHES, z, MANY_SPACES>,
+    Subheader: $"{StringSlice(FILLED_SQUARES, 0, Math.Clamp(switchesFlipped, 0, NEEDED_SWITCHES))}{z}fg636363FF>{StringSlice(EMPTY_SQUARES, 0, Math.Clamp(NEEDED_SWITCHES - switchesFlipped, 0, NEEDED_SWITCHES))}",
+    SubheaderColor: switchesFlipped >= NEEDED_SWITCHES ? Color.Green : Colors.StepGradient([Color.Red, Color.Orange, Color.Yellow, Color.LimeGreen], switchesFlipped / NEEDED_SWITCHES),
+    TextColor: Color.White,
     Location: Location.Left,
-    Reevaluation: HudTextRev.VisibleToAndString
+    SortOrder: 1,
+    Reevaluation: HudTextRev.VisibleToStringAndColor
   );
 }
+
+import "../../lib/OSTWUtils/String.del";

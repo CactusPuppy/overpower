@@ -19,18 +19,24 @@ settings
 	{
 		Team Deathmatch
 		{
+			Game Length In Minutes: 10
+			Self Initiated Respawn: Off
 			enabled maps
 			{
 				Horizon Lunar Colony
         // Workshop Expanse
 			}
-			Limit Roles: 1 Tank 2 Offense 2 Support
+			Limit Roles: Off
 		}
 
 		General
 		{
 			Game Mode Start: Immediately
 		}
+	}
+
+	lobby {
+		Return To Lobby: After A Mirror Match
 	}
 
 	heroes {
@@ -64,19 +70,22 @@ settings
 	}
 }
 
+
 globalvar Number i;
 
 import "./setup.del";
 import "interaction/index.del";
 import "hero/index.del";
 import "player/index.del";
-// import "cutscene/index.del";
+import "cutscene/index.del";
 
 
 import "gameFlow.del";
 
 import "lib/dictionary.del";
 import "lib/limitedVisibility.del";
+import "lib/inconspicuous.del";
+import "lib/OSTWUtils/SyncedTimer.del";
 import "lib/OSTWUtils/Miscellaneous.del";
 
 import "./debug.del";

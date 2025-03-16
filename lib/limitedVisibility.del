@@ -1,4 +1,5 @@
 playervar Boolean hasLimitedVision = true;
+playervar Number hideConeLocks;
 
 Number VIS_SPHERE_COUNT: 75;
 Number VIS_CONE_COUNT: 30;
@@ -13,7 +14,9 @@ rule: "Creating vision helpers"
     Number strength: (i / VIS_SPHERE_COUNT) <= 0.85 ? CosineFromDegrees(i / (VIS_SPHERE_COUNT * 0.85) * 90) : 1;
 
     CreateEffect(
-      VisibleTo:      LocalPlayer().hasLimitedVision ? LocalPlayer() : null,
+      VisibleTo:      LocalPlayer().hasLimitedVision
+                        && IsAlive(LocalPlayer())
+                          ? LocalPlayer() : null,
       Type:           Effect.Sphere,
       Color:          Color.Black,
       Position:       UpdateEveryFrame(EyePosition(LocalPlayer())),
@@ -26,7 +29,13 @@ rule: "Creating vision helpers 2"
 {
   for (i = 0; VIS_CONE_COUNT; 1)
   {
-    CreateEffect(LocalPlayer().hasLimitedVision ? LocalPlayer() : null, Effect.GoodAura, Color.Black, UpdateEveryFrame(EyePosition(LocalPlayer()) + FacingDirectionOf(LocalPlayer()) * 0.75), 1, EffectRev.VisibleToPositionAndRadius);
+    CreateEffect(
+      VisibleTo:    LocalPlayer().hasLimitedVision
+                      && IsAlive(LocalPlayer())
+                      && LocalPlayer().hideConeLocks <= 0
+                      && !IsCommunicatingAnyEmote(LocalPlayer())
+                        ? LocalPlayer() : null,
+      Effect.GoodAura, Color.Black, UpdateEveryFrame(EyePosition(LocalPlayer()) + FacingDirectionOf(LocalPlayer()) * 0.75), 1, EffectRev.VisibleToPositionAndRadius);
   }
 }
 

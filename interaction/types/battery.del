@@ -1,38 +1,61 @@
 playervar Number batteryInteractionIndex = -1;
+playervar Number batterySourceIndex = -1;
+Boolean hasBattery(Player p = EventPlayer()): p.batterySourceIndex != -1;
 playervar Any batteryEffectID!;
 
 globalvar Number batteriesDelivered;
+Number NUM_BATTERIES: batteryReceptacleLocations.Length;
 
-Number BATTERY_SOURCE_RADIUS: 0.5; // FIXME: Reference size of Bastion nade
+Number BATTERY_SOURCE_RADIUS: 0.65; // FIXME: Reference size of Bastion nade
 Number BATTERY_PICKUP_TIME: 3;
 
-Boolean IsPlayerHoveringBatterySource(Player p = EventPlayer()): DoesLineIntersectSphere(p.EyePosition(), p.FacingDirection(), CurrentInteractionPoint(p).location, BATTERY_SOURCE_RADIUS);
+Boolean IsPlayerHoveringBatterySource(Player p = EventPlayer()): DoesLineIntersectSphere(p.EyePosition(), p.FacingDirection(), CurrentInteractionPoint(p).location + Up() * BATTERY_SOURCE_RADIUS, BATTERY_SOURCE_RADIUS);
 
-// TODO: Set an offset for all heroes on Team LSF
-Vector BATTERY_OFFSET(Player p = EventPlayer()): [Backward(),
-  Backward() * 0.75
+Vector BATTERY_OFFSET(Player p = EventPlayer()): [
+  Forward() * 0.5 + Down() * 0.35,
+  Forward() * 0.75 + Down() * 0.25,
+  Forward() * 0.5 + Down() * 0.45
 ][[
-  Hero.Tracer
+  Hero.Dva,
+  Hero.Illari
 ].IndexOf(EffectiveHero(p)) + 1];
 
 rule: "[interaction/types/battery.del] Initialize all battery dispensers"
 {
-  for (i = 0; batteryDispenserLocations; 1) {
-    NewInteractionPoint(batteryDispenserLocations[i], InteractableType.BATTERY_SOURCE);
+  for (i = 0; batterySourceLocations.Length; 1) {
+    NewInteractionPoint(batterySourceLocations[i], InteractableType.BATTERY_SOURCE);
     interactionPoints.Last.SetDataValue("has_battery", true);
   }
 }
 
+rule: "[interaction/types/battery.del] Initialize all battery receptacles"
+{
+  for (i = 0; NUM_BATTERIES; 1) {
+    NewInteractionPoint(batteryReceptacleLocations[i], InteractableType.BATTERY_RECEIVER);
+    CreateIcon(interactionPoints[EvaluateOnce(interactionPoints.Length - 1)].GetDataValue("has_battery") ? null : AllPlayers().Filter(p => hasBattery(p)), batteryReceptacleLocations[EvaluateOnce(i)], Icon.Flag, IconRev.VisibleTo, Color.Orange, true);
+    interactionPoints[i].SetDataValue("flag_icon", LastCreatedEntity());
+  }
+}
+
 void HandleBatteryInteract() {
-  if (CurrentInteractionPoint().type == InteractableType.BATTERY_SOURCE) AbortIf(!CurrentInteractionPoint().GetDataValue("has_battery"));
-  if (CurrentInteractionPoint().type == InteractableType.BATTERY_RECEIVER) AbortIf(CurrentInteractionPoint().GetDataValue("has_battery"));
+  if (CurrentInteractionPoint().type == InteractableType.BATTERY_SOURCE) {
+    AbortIf(hasBattery(EventPlayer()));
+    AbortIf(!CurrentInteractionPoint().GetDataValue("has_battery"));
+  }
+  if (CurrentInteractionPoint().type == InteractableType.BATTERY_RECEIVER) {
+    AbortIf(!hasBattery(EventPlayer()));
+    AbortIf(CurrentInteractionPoint().GetDataValue("has_battery"));
+  }
   AbortIf(!IsPlayerHoveringBatterySource());
 
   batteryInteractionIndex = nearestInteractPointIndex;
   StartChanneling(BATTERY_PICKUP_TIME);
   SetStatus(EventPlayer(), null, Status.Rooted, BATTERY_PICKUP_TIME);
+  // Timer sync
+  timer = TotalTimeElapsed();
   StartCamWith1PTransition(
     player:         EventPlayer(),
+    timer: timer,
     eyePosition:    RayCastHitPosition(
       StartPOS:           EyePosition(EventPlayer()),
       EndPOS:             EyePosition(EventPlayer())
@@ -42,6 +65,7 @@ void HandleBatteryInteract() {
       PlayersToExclude:   AllPlayers()
     ),
     lookAtPosition: (EyePosition(EventPlayer()) + interactionPoints[batteryInteractionIndex].location) / 2);
+  hideConeLocks += 1;
 
   WaitUntil(
     ContinueCondition:    !IsButtonHeld(EventPlayer(), Button.Interact)
@@ -50,8 +74,11 @@ void HandleBatteryInteract() {
                             || channelState == ChannelState.INTERRUPTED,
     Timeout:              BATTERY_PICKUP_TIME);
 
+  timer = 0;
+  ChaseVariableAtRate(timer, 1000000, 1, RateChaseReevaluation.None);
   StopCamWith1PTransition(
     player:         EventPlayer(),
+    timer: timer,
     eyePosition:    RayCastHitPosition(
       StartPOS:           EyePosition(EventPlayer()),
       EndPOS:             EyePosition(EventPlayer())
@@ -62,34 +89,186 @@ void HandleBatteryInteract() {
     ),
     lookAtPosition: (EyePosition(EventPlayer()) + interactionPoints[batteryInteractionIndex].location) / 2
   );
+  hideConeLocks -= 1;
   ClearStatus(EventPlayer(), Status.Rooted);
   # Successful battery channel
   if (channelProgress == 100) {
     if (interactionPoints[batteryInteractionIndex].type == InteractableType.BATTERY_SOURCE) {
+      batterySourceIndex = batteryInteractionIndex;
       interactionPoints[batteryInteractionIndex].SetDataValue("has_battery", false);
     } else if (interactionPoints[batteryInteractionIndex].type == InteractableType.BATTERY_RECEIVER) {
+      batteriesDelivered += 1;
+      ModifyTeamScore(Team.Team1, 1);
+      PlayEffect(AllPlayers(), PlayEffect.WreckingBallPiledriverImpactSound, null, interactionPoints[batteryInteractionIndex].location, 100);
+      PlayEffect(AllPlayers(), PlayEffect.SombraLogoSound, null, interactionPoints[batteryInteractionIndex].location, 100);
+      DestroyEffect(interactionPoints[batteryInteractionIndex].GetDataValue("effects"));
       interactionPoints[batteryInteractionIndex].SetDataValue("has_battery", true);
-      batteryInteractionIndex = -1;
+      CreateProjectileEffect(AllPlayers(), ProjectileType.BaptisteBioticLauncher, AllPlayers(Team.Team1), EvaluateOnce(interactionPoints[batteryInteractionIndex].location), Up(), 0.1, ProjectileEffectReeval.VisibleToFriendlyTo);
+      batterySourceIndex = -1;
     }
 
     CSM_Trigger(ChannelStateAction.COMPLETE_CHANNELING);
     return;
+  } else if (channelState != ChannelState.INTERRUPTED) {
+    CSM_Trigger(ChannelStateAction.INTERRUPTED);
   }
+  batteryInteractionIndex = -1;
+}
+
+rule: "[interaction/types/battery.del] When player takes damage and is channeling, interrupt them"
+Event.OnDamageTaken
+if (channelState == ChannelState.CHANNELING)
+{
+  CSM_Trigger(ChannelStateAction.INTERRUPTED);
+}
+
+rule: "[interaction/types/battery.del] When player is hard CCd while channeling, interrupt them"
+Event.OngoingPlayer
+if (HasSpawned())
+if (IsAlive())
+if (channelState == ChannelState.CHANNELING)
+if (IsHardCCd())
+{
+  CSM_Trigger(ChannelStateAction.INTERRUPTED);
 }
 
 rule: "[interaction/types/battery.del] When player has a battery, create an effect on their back"
 Event.OngoingPlayer
-if (batteryInteractionIndex != -1)
+if (hasBattery())
 {
   batteryEffectID = CreateProjectileEffect(
-    VisibleTo:          AllPlayers().Remove(EventPlayer()),
-    ProjectileType:     ProjectileType.BastionA36TacticalGrenade,
+    VisibleTo:          AllPlayers(),
+    ProjectileType:     ProjectileType.BaptisteBioticLauncher,
     FriendlyTo:         AllPlayers(Team.Team1),
-    Position:           UpdateEveryFrame(BATTERY_OFFSET(EventPlayer())
+    Position:           UpdateEveryFrame(WorldVectorOf(BATTERY_OFFSET(EventPlayer()), EventPlayer(), LocalVector.RotationAndTranslation)
                           + 0.5 * (EyePosition(EventPlayer()) - PositionOf(EventPlayer()))),
     Direction:          Up(),
-    Oversize:           0,
+    Oversize:           0.05,
     Reevaluation:       ProjectileEffectReeval.VisibleToFriendlyToPositionDirectionAndSize);
-  WaitForeverUntil(batteryInteractionIndex == -1);
+  SetMoveSpeed(EventPlayer(), 60);
+  if (DEBUG_MODE) SetMoveSpeed(EventPlayer(), 500);
+  DisallowButton(EventPlayer(), Button.Jump);
+  switch (HeroOf()) {
+    case Hero.Illari:
+      SetUltimateAbilityEnabled(EventPlayer(), false);
+    case Hero.Dva:
+    case Hero.Juno:
+    case Hero.Mercy:
+    case Hero.Ashe:
+      SetAbility1Enabled(EventPlayer(), false);
+      break;
+  }
+  PlayEffect(EventPlayer(), PlayEffect.GoodPickupEffect, Color.Orange, EventPlayer(), 1);
+  PlayEffect(EventPlayer(), PlayEffect.BuffImpactSound, null, EventPlayer(), 100);
+
+  WaitForeverUntil(!hasBattery());
+
+  switch (HeroOf()) {
+    case Hero.Illari:
+      SetUltimateAbilityEnabled(EventPlayer(), true);
+    case Hero.Dva:
+    case Hero.Juno:
+    case Hero.Mercy:
+    case Hero.Ashe:
+      SetAbility1Enabled(EventPlayer(), true);
+      break;
+  }
+  SetMoveSpeed(EventPlayer(), 100);
+  AllowButton(EventPlayer(), Button.Jump);
   DestroyEffect(batteryEffectID);
 }
+
+rule: "[interaction/types/battery.del] When player dies, drop battery"
+Event.OnDeath
+if (hasBattery())
+{
+  # Failsafe
+  StopCamera(EventPlayer());
+  SmallMessage(
+    VisibleTo:    AllPlayers(),
+    Header:       <" <0>  <1> <2> <3>",
+                    IconString(Icon.Warning),
+                    EventPlayer(),
+                    @"dropped",
+                    AbilityIconString(Hero.Ana, Button.Ability2)>);
+  PlayEffect(AllPlayers(), PlayEffect.DoomfistRisingUppercutImpactSound, null, EventPlayer().Position(), 100);
+  Vector dropLocation! = NearestWalkablePosition(EventPlayer());
+  if (EventWasEnvironment() || dropLocation == null) {
+    interactionPoints[batterySourceIndex].SetDataValue("has_battery", true);
+    batterySourceIndex = -1;
+    return;
+  }
+
+  interactionPoints[batterySourceIndex].SetDataValue("dropped_location", dropLocation);
+  // TODO: handle moving the battery drop location temporarily
+}
+
+rule: '[interaction/types/switch.del] prompt player to hold interact to pull a battery'
+{
+  // if (DEBUG_MODE) {
+  //   CreateHudText(
+  //     VisibleTo: LocalPlayer(),
+  //     Header: $"hover: {IsPlayerHoveringBatterySource(LocalPlayer())} | has_battery: {(CurrentInteractionPoint(LocalPlayer()).type == InteractableType.BATTERY_RECEIVER) != CurrentInteractionPoint(LocalPlayer()).GetDataValue("has_battery")}",
+  //     Reevaluation: HudTextRev.VisibleToAndString
+  //   );
+  // }
+  CreateInWorldText(
+    VisibleTo: LocalPlayer().Team() == Team.Team1
+      && ([InteractableType.BATTERY_SOURCE, InteractableType.BATTERY_RECEIVER].Contains(CurrentInteractionPoint(LocalPlayer()).type))
+      && IsPlayerHoveringBatterySource(LocalPlayer())
+      && ((CurrentInteractionPoint(LocalPlayer()).type == InteractableType.BATTERY_SOURCE) != hasBattery(LocalPlayer()))
+        ? LocalPlayer() : null,
+    Header: <"<1> Hold <0>", InputBindingString(Button.Interact), AbilityIconString(Hero.Ana, Button.Ability2)>,
+    TextColor: Color.White,
+    Position: CurrentInteractionPoint(LocalPlayer()).location + Up() * BATTERY_SOURCE_RADIUS,
+    Scale: 2,
+    Clipping: Clipping.DoNotClip,
+    Reevaluation: InworldTextRev.VisibleToPositionAndString,
+    Spectators: Spectators.VisibleNever
+  );
+}
+
+rule: "[interaction/types/battery.del] Show battery channeling progress"
+{
+  CreateProgressBarHudText(
+    VisibleTo:          LocalPlayer().channelState != ChannelState.NONE ? LocalPlayer() : null,
+    Value:              LocalPlayer().channelProgress,
+    Text:               interactionPoints[LocalPlayer().batteryInteractionIndex].type == InteractableType.BATTERY_SOURCE
+                          ? <"<0> <1>", @"capturing", AbilityIconString(Hero.Ana, Button.Ability2)>
+                          : <"<0> <1>", @"dropping", AbilityIconString(Hero.Ana, Button.Ability2)>,
+    Location:           Location.Top,
+    SortOrder:          20,
+    ProgressBarColor:   LocalPlayer().channelState == ChannelState.INTERRUPTED
+                          ? Color.Red
+                          : CustomColor(
+      red:                LinearInterpolate(255, 227, LocalPlayer().channelProgress / 100),
+      green:              LinearInterpolate(255, 152, LocalPlayer().channelProgress / 100),
+      blue:               LinearInterpolate(255, 48,  LocalPlayer().channelProgress / 100),
+      alpha:              255
+    ),
+    TextColor:          Color.White,
+    Reevaluation:       ProgressBarHudEvaluation.VisibleToValuesAndColor,
+    NonteamSpectators:  Spectators.VisibleNever
+  );
+}
+
+String EMPTY_CIRCLES: '○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○
+○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○';
+String FILLED_CIRCLES: '● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ●
+● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ●';
+
+rule: '[interaction/types/battery.del] show battery delivery progress'
+{
+  CreateHudText(
+    VisibleTo: AllPlayers(),
+    Text: <"<0> <1><3>fg636363FF> / <2><4>", AbilityIconString(Hero.Ana, Button.Ability2), batteriesDelivered, NEEDED_BATTERIES, z, MANY_SPACES>,
+    Subheader: $"{StringSlice(FILLED_CIRCLES, 0, Math.Clamp(batteriesDelivered, 0, NEEDED_BATTERIES) * 2 - 1)}{z}fg636363FF>{StringSlice(EMPTY_CIRCLES, 0, (NEEDED_BATTERIES - Math.Clamp(batteriesDelivered, 0, NEEDED_BATTERIES)) * 2 - 1)}",
+    SubheaderColor: batteriesDelivered >= NEEDED_BATTERIES ? Color.LimeGreen : Colors.StepGradient([Color.Red, Color.Orange], batteriesDelivered / NEEDED_BATTERIES),
+    TextColor: Color.White,
+    Location: Location.Left,
+    SortOrder: 2,
+    Reevaluation: HudTextRev.VisibleToStringAndColor
+  );
+}
+
+import "../../lib/OSTWUtils/String.del";

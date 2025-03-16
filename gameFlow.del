@@ -1,5 +1,6 @@
 enum GameState {
   NONE = "NONE",
+  INTRO = "INTRO",
   SELECTING_HEROES = "SELECTING_HEROES",
   GAMEPLAY = "GAMEPLAY",
   CONCLUSION = "CONCLUSION"
@@ -9,52 +10,51 @@ globalvar GameState currentGameState = GameState.NONE;
 globalvar GameStateAction gameStateAction;
 globalvar Team winningTeam;
 
-rule: "When game first boots, perform gamemode setup and move to intro phase"
+// =========== REACTIVE GAME LOGIC ===========
+
+rule: "[gameFlow.del] When game first boots, perform gamemode setup and move to selecting heroes phase"
 if (currentGameState == GameState.NONE)
 {
   WaitUntil(
     ContinueCondition: CountOf(AllPlayers(Team.Team1)) > 0
-      && (CountOf(AllPlayers(Team.Team2)) > 0 || DEBUG_MODE)
-      && AllPlayers().IsTrueForAll(p => HasSpawned(p)),
+      && (CountOf(AllPlayers(Team.Team2)) > 0 || DEBUG_MODE),
     Timeout: 10);
   GSM_Trigger(GameStateAction.INIT_SETUP_COMPLETE);
 }
 
-rule: "Handle when assembling heroes starts and ends"
+rule: "[gameFlow.del] Handle when assembling heroes starts and ends"
 if (IsAssemblingHeroes())
 {
+  async KeepClientsUpdated();
   WaitUntil(!IsAssemblingHeroes(), 60);
   GSM_Trigger(GameStateAction.SELECTING_HEROES_COMPLETE);
 }
 
-rule: "End match after victory poses"
+void KeepClientsUpdated() "[gameFlow.del | SUB] Keep clients from desyncing" {
+  while (IsAssemblingHeroes()) {
+    Wait(0.192);
+    SetMatchTime(MatchTime());
+  }
+}
+
+disabled rule: "[gameFlow.del] End match after victory poses"
 if (IsMatchComplete())
 {
   Wait(8.5);
   ReturnToLobby();
 }
 
-// =========== REACTIVE GAME LOGIC ===========
-
-rule: 'when gameplay in progress, alter objective description'
+rule: "[gameFlow.del] When all objectives complete, grant win to Team LSF"
+if (switchesFlipped >= NUM_SWITCHES * NEEDED_SWITCHES_RATIO)
+if (batteriesDelivered >= NUM_BATTERIES * NEEDED_BATTERIES_RATIO)
 if (currentGameState == GameState.GAMEPLAY)
 {
-  SetObjectiveDescription(
-    VisibleTo:        AllPlayers(),
-    // Header:             <"Showtime In: <0>:<1>",
-    //                     RoundToInteger(MatchTime() / 60, Rounding.Down),
-    //                     RoundToInteger(MatchTime() % 60, Rounding.Down) > 9
-    //                       ? RoundToInteger(MatchTime() % 60, Rounding.Down)
-    //                       : <"0<0>", RoundToInteger(MatchTime() % 60, Rounding.Down)>>,
-    Header:             "Showtime In",
-    Reevaluation:     HudTextRev.VisibleToAndString
-  );
+  GSM_Trigger(GameStateAction.TEAM_LSF_WIN);
 }
 
-rule: 'when time runs out, grant win to Team Talon'
+rule: '[gameFlow.del] when time runs out, grant win to Team Talon'
 if (currentGameState == GameState.GAMEPLAY)
 if (MatchTime() == 0)
-if (winningTeam != null)
 {
   GSM_Trigger(GameStateAction.TEAM_TALON_WIN);
 }
@@ -115,10 +115,15 @@ void GSM_GS_SELECT_HERO() {
 void GSM_GS_GAMEPLAY() {
   switch (gameStateAction) {
     case GameStateAction.TEAM_LSF_WIN:
+      SetSlowMotion(30);
+      PauseMatchTime();
+      AllPlayers().hasLimitedVision = false;
+      PlayEffect(LocalPlayer(), PlayEffect.SombraEmpExplosionSound, Team.Team1, LocalPlayer(), 200);
       winningTeam = Team.Team1;
       currentGameState = GameState.CONCLUSION;
       break;
     case GameStateAction.TEAM_TALON_WIN:
+      SetSlowMotion(30);
       winningTeam = Team.Team2;
       currentGameState = GameState.CONCLUSION;
       break;
@@ -126,13 +131,12 @@ void GSM_GS_GAMEPLAY() {
 }
 
 void GSM_GS_CONCLUSION() {
-  switch (gameStateAction) {
-    case GameStateAction.CONCLUSION_COMPLETE:
-      if (!winningTeam) {
-        LogToInspector("[PANIC] We somehow ended up at the end of the game without a victor? Declaring a match draw...");
-        DeclareMatchDraw();
-        return;
-      }
-      DeclareTeamVictory(winningTeam);
+  if (gameStateAction == GameStateAction.CONCLUSION_COMPLETE) {
+    if (winningTeam == null) {
+      LogToInspector("[PANIC] Conclusion ended without a winning team declared!");
+      DeclareMatchDraw();
+      return;
+    }
+    DeclareTeamVictory(winningTeam);
   }
 }

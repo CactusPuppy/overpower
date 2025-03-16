@@ -31,12 +31,46 @@ single struct InteractionPoint {
         break;
       case InteractableType.BATTERY_SOURCE:
       # InteractableType.BATTERY_SOURCE
-        CreateProjectileEffect(AllPlayers(), ProjectileType.BastionA36TacticalGrenade, AllPlayers(Team.Team1), location, Up(), 0.1, ProjectileEffectReeval.VisibleToFriendlyTo);
-        SetDataValue("effect_id", LastCreatedEntity());
+        CreateProjectileEffect(GetDataValue("has_battery") ? AllPlayers() : null, ProjectileType.BaptisteBioticLauncher, AllPlayers(Team.Team1), EvaluateOnce(location), Up(), 0.1, ProjectileEffectReeval.VisibleToFriendlyTo);
+
+        CreateEffect(
+          VisibleTo:    AllPlayers(),
+          Type:         Effect.Ring,
+          Color:        GetDataValue("has_battery") ? Color.Orange : Color.Gray,
+          Position:     EvaluateOnce(location),
+          Radius:       0.5,
+          Reevaluation: EffectRev.VisibleToAndColor);
         break;
       case InteractableType.BATTERY_RECEIVER:
       # InteractableType.BATTERY_RECEIVER
-        // CreateEffect()
+        Any[] effects = [];
+        CreateEffect(
+          VisibleTo: AllPlayers(),
+          Type: Effect.GoodAura,
+          Color: Color.Gray,
+          Position: location + BATTERY_SOURCE_RADIUS * Up(),
+          Radius: 0.4,
+          Reevaluation: EffectRev.VisibleToAndColor
+        );
+        effects.ModAppend(LastCreatedEntity());
+        CreateEffect(
+          VisibleTo: AllPlayers(),
+          Type: Effect.BadAura,
+          Color: Color.Gray,
+          Position: location + BATTERY_SOURCE_RADIUS * Up(),
+          Radius: 0.42,
+          Reevaluation: EffectRev.VisibleToAndColor
+        );
+        effects.ModAppend(LastCreatedEntity());
+        SetDataValue("effects", [effects]);
+        CreateEffect(
+          VisibleTo:    AllPlayers(),
+          Type:         Effect.Ring,
+          Color:        GetDataValue("has_battery") ? Color.Orange : Color.Gray,
+          Position:     EvaluateOnce(location),
+          Radius:       0.5,
+          Reevaluation: EffectRev.VisibleToAndColor
+        );
         break;
     }
   }

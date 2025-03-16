@@ -1,4 +1,5 @@
-globalvar Boolean DEBUG_MODE = WorkshopSettingToggle("99. DEBUG MODE", "DEBUG MODE ENABLED", true, -100);
+String DEBUG_MODE_CATEGORY: "99. DEBUG MODE";
+globalvar Boolean DEBUG_MODE = WorkshopSettingToggle(DEBUG_MODE_CATEGORY, "DEBUG MODE ENABLED", true, -100);
 
 import "lib/OSTWUtils/Diagnostics.del";
 rule: "Create DEBUG huds"
@@ -9,13 +10,14 @@ if (DEBUG_MODE)
     ShowServerLoad:         true,
     ShowServerLoadPeak:     true,
     ShowEntityCount:        true,
+    ShowTextCount:          true,
     PlayMoreEffectsEnabled: true,
   );
   WaitForeverUntil(IsGameInProgress());
   LogToInspector($"Effect Count: {EntityCount()}");
 }
 
-rule: "[debug.del] When host player melees in debug mode, issue an order to advance game state"
+disabled rule: "[debug.del] When host player melees in debug mode, issue an order to advance game state"
 if (DEBUG_MODE)
 if (HostPlayer().IsButtonHeld(Button.Melee))
 {
@@ -33,11 +35,21 @@ if (HostPlayer().IsButtonHeld(Button.Melee))
   Wait(0.064);
 }
 
+rule: "[debug.del] melee to jump to end"
+if (DEBUG_MODE)
+if (HostPlayer().IsButtonHeld(Button.Melee))
+{
+  GSM_Trigger(GameStateAction.TEAM_LSF_WIN);
+}
+
 rule: "[debug.del] Reduce match time in assembling heroes"
 if (DEBUG_MODE)
 if (IsAssemblingHeroes())
 {
   SetMatchTime(5);
+  WaitForeverUntil(IsGameInProgress());
+  Wait(0.25);
+  if (WorkshopSettingToggle(DEBUG_MODE_CATEGORY, "Indefinite Match", false)) PauseMatchTime();
 }
 
 rule: "[debug.del] Give ult faster"

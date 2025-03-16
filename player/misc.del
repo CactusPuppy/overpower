@@ -1,0 +1,7 @@
+rule: '[player/misc.del] on team talon final blow, add one to team 2 score'
+Event.OnFinalBlow
+Team.Team2
+Player.All
+{
+    ModifyTeamScore(Team.Team2, 1);
+}

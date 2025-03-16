@@ -2,3 +2,182 @@ globalvar Vector cutsceneCamPos;
 globalvar Vector cutsceneCamFac;
 
 // TODO: Load cutscene data
+globalvar ResetPoint[] VICTORY_PODIUMS = [
+{ location: Vector(-6.37, 8.00, -2.71), facing: Vector(0.91, 0.00, -0.42) },
+{ location: Vector(-5.30, 8.00, 0.06), facing: Vector(0.89, 0.00, -0.45) },
+{ location: Vector(-5.81, 8.00, -1.35), facing: Vector(0.90, 0.00, -0.43) },
+{ location: Vector(-3.13, 8.00, 2.42), facing: Vector(0.76, 0.00, -0.65) },
+{ location: Vector(-4.24, 8.00, 1.25), facing: Vector(0.81, 0.00, -0.58) }
+];
+
+globalvar Vector[] Fireworks_01 = [
+  Vector(-6.48, 8.00, 1.09),
+  Vector(-6.95, 8.00, 0.10),
+  Vector(-6.17, 8.00, 2.21),
+  Vector(-7.66, 8.00, -0.80),
+  Vector(-6.10, 8.00, 3.29),
+  Vector(-8.63, 8.00, -1.51),
+  Vector(-6.31, 8.00, 4.41),
+  Vector(-9.79, 8.00, -1.92),
+  Vector(-6.82, 8.00, 5.46),
+  Vector(-10.91, 8.00, -1.98),
+  Vector(-7.50, 8.00, 6.35)
+];
+
+Vector MirroredVector(Vector v): DotProduct(Normalize(cutsceneCamFac), v) / MagnitudeOf(cutsceneCamFac) * cutsceneCamFac + cutsceneCamPos - v;
+
+globalvar Vector[] Fireworks_02 = [
+  Vector(3.02, 8.00, 11.38),
+  Vector(-9.80, 8.00, -13.40),
+  Vector(0.96, 8.00, 12.44),
+  Vector(-11.85, 8.00, -12.32),
+  Vector(-1.64, 8.00, 13.66),
+  Vector(-14.35, 8.00, -10.91),
+  Vector(-3.88, 8.00, 14.90),
+  Vector(-16.65, 8.00, -9.80),
+  Vector(-6.55, 8.00, 16.05),
+  Vector(-19.13, 8.00, -8.28),
+  Vector(-9.16, 8.00, 17.34),
+  Vector(-21.69, 8.00, -6.89),
+  Vector(-11.98, 8.00, 18.75),
+  Vector(-24.48, 8.00, -5.41),
+  Vector(-14.56, 8.00, 20.05),
+  Vector(-27.03, 8.00, -4.06),
+  Vector(-17.32, 8.00, 21.45),
+  Vector(-29.77, 8.00, -2.61),
+  Vector(-19.85, 8.00, 22.63),
+  Vector(-32.19, 8.00, -1.23),
+  Vector(-22.12, 8.00, 23.78),
+  Vector(-34.44, 8.00, -0.05),
+  Vector(-24.64, 8.00, 23.23),
+  Vector(-35.45, 8.00, 2.33),
+  Vector(-26.31, 8.00, 21.70),
+  Vector(-35.17, 8.00, 4.58),
+  Vector(-27.74, 8.00, 19.85),
+  Vector(-34.48, 8.00, 6.82),
+  Vector(-29.02, 8.00, 18.30),
+  Vector(-33.96, 8.00, 8.75),
+  Vector(-29.95, 8.00, 16.81),
+  Vector(-33.28, 8.00, 10.38),
+  Vector(-30.67, 8.00, 15.35),
+  Vector(-32.50, 8.00, 11.80),
+  Vector(-31.26, 8.00, 14.17),
+  Vector(-31.88, 8.00, 12.97)
+];
+
+Player winner_i(Number i = i): PlayersInSlot(i, winningTeam);
+
+rule: '[cutscene/cutscene_global.del] Run cutscene for conclusion' -1
+if (currentGameState == GameState.CONCLUSION)
+{
+    DestroyAllHudText();
+    cutsceneCamPos = Vector(-0.87, 9, -2.31);
+    cutsceneCamFac = Vector(-0.87, 0.23, 0.45);
+    Wait(0.5);
+    SetSlowMotion(100);
+    for (i = 0; VICTORY_PODIUMS.Length; 1) {
+      Respawn(winner_i());
+      SetInvisible(winner_i(), InvisibleTo.None);
+    }
+    Wait(0.25);
+    for (i = 0; VICTORY_PODIUMS.Length; 1) {
+      TeleportPlayerToResetPoint(winner_i(), VICTORY_PODIUMS[i]);
+      SetStatus(winner_i(), null, Status.PhasedOut, 1000000);
+      SetStatus(winner_i(), null, Status.Invincible, 1000000);
+      StopTransformingThrottle(winner_i());
+      // StartTransformingThrottle(winner_i(), 1, 1, cutsceneCamFac);
+      AllowAllButtons(winner_i());
+    }
+    Communicate(AllPlayers(winningTeam), Communication.EmoteUp);
+    DestroyAllEffects();
+
+    # Victory effects
+    CreateProjectileEffect(AllPlayers(), ProjectileType.SymmetraPhotonProjector, AllPlayers(winningTeam),
+      Up() * 15, Up() + 0.01 * Forward(), 0.5, ProjectileEffectReeval.VisibleToFriendlyToPositionDirectionAndSize);
+
+    async! FireworksLoop01();
+    async! FireworksLoop02();
+
+    Wait(7);
+    GSM_Trigger(GameStateAction.CONCLUSION_COMPLETE);
+}
+
+void FireworksLoop01() "[cutscene/cutscene_global.del | SUB] Fireworks loop 01"
+{
+  Number i2;
+  for (i2 = 0; Fireworks_01.Length; 1) {
+    Vector point_i: Fireworks_01[i2];
+    CreateProjectile(ProjectileType.EchoStickyBomb, null, point_i, Up(),
+      Relative.ToWorld, ModifyHealthType.Damage, OppositeTeamOf(winningTeam),
+      0, 0, 0, PlayEffect.BadExplosion, PlayEffect.ExplosionSound, 0, 15,
+      RandomReal(3,5), 0, 0, 3);
+    MinWait();
+    CreateProjectile(ProjectileType.GenjiShuriken, null, point_i, Up(),
+      Relative.ToWorld, ModifyHealthType.Damage, OppositeTeamOf(winningTeam),
+      0, 0, 0, PlayEffect.BadExplosion, PlayEffect.ExplosionSound, 0, 15,
+      RandomReal(3,5), 0, 0, 3.5);
+    CreateProjectile(ProjectileType.GenjiShuriken, null, point_i, Up(),
+      Relative.ToWorld, ModifyHealthType.Damage, OppositeTeamOf(winningTeam),
+      0, 0, 0, PlayEffect.BadExplosion, PlayEffect.ExplosionSound, 0, 15,
+      RandomReal(3,5), 0, 0, 4);
+    Wait(0.064);
+  }
+  for (i2 = Fireworks_01.Length - 1; -1; -1) {
+    Vector point_i: Fireworks_01[i2];
+    CreateProjectile(ProjectileType.EchoStickyBomb, null, point_i, Up(),
+      Relative.ToWorld, ModifyHealthType.Damage, OppositeTeamOf(winningTeam),
+      0, 0, 0, PlayEffect.BadExplosion, PlayEffect.ExplosionSound, 0, 15,
+      RandomReal(3,5), 0, 0, 3);
+    MinWait();
+    CreateProjectile(ProjectileType.GenjiShuriken, null, point_i, Up(),
+      Relative.ToWorld, ModifyHealthType.Damage, OppositeTeamOf(winningTeam),
+      0, 0, 0, PlayEffect.BadExplosion, PlayEffect.ExplosionSound, 0, 15,
+      RandomReal(3,5), 0, 0, 3.5);
+    CreateProjectile(ProjectileType.GenjiShuriken, null, point_i, Up(),
+      Relative.ToWorld, ModifyHealthType.Damage, OppositeTeamOf(winningTeam),
+      0, 0, 0, PlayEffect.BadExplosion, PlayEffect.ExplosionSound, 0, 15,
+      RandomReal(3,5), 0, 0, 4);
+    Wait(0.064);
+  }
+  Loop();
+}
+
+void FireworksLoop02() "[cutscene/cutscene_global.del | SUB] Fireworks loop 02"
+{
+  Number Y_CORRECTION: 25;
+  Number SPEED: 25;
+  Number GRAVITY: 20;
+  Number i2;
+  for (i2 = 0; Fireworks_02.Length; 2) {
+    Vector point_i: Fireworks_02[i2];
+    Vector point_i_mirror: Fireworks_02[i2 + 1];
+    if (DEBUG_MODE) LogToInspector($"point_i: {point_i} | point_i_mirror: {point_i_mirror}");
+    CreateProjectile(ProjectileType.EchoStickyBomb, null, point_i, Up() * Y_CORRECTION + MirroredVector(point_i),
+      Relative.ToWorld, ModifyHealthType.Damage, (winningTeam),
+      0, 0, 0, PlayEffect.BadExplosion, PlayEffect.ExplosionSound, 0, SPEED,
+      RandomReal(3,5), 0, 0, GRAVITY);
+    CreateProjectile(ProjectileType.EchoStickyBomb, null, point_i_mirror, Up() * Y_CORRECTION + MirroredVector(point_i_mirror),
+      Relative.ToWorld, ModifyHealthType.Damage, (winningTeam),
+      0, 0, 0, PlayEffect.BadExplosion, PlayEffect.ExplosionSound, 0, SPEED,
+      RandomReal(3,5), 0, 0, GRAVITY);
+    MinWait();
+    CreateProjectile(ProjectileType.GenjiShuriken, null, point_i, Up() * Y_CORRECTION + MirroredVector(point_i),
+      Relative.ToWorld, ModifyHealthType.Damage, (winningTeam),
+      0, 0, 0, PlayEffect.BadExplosion, PlayEffect.ExplosionSound, 0.1, SPEED,
+      RandomReal(3,5), 0, 0, GRAVITY + 0.5);
+    CreateProjectile(ProjectileType.GenjiShuriken, null, point_i, Up() * Y_CORRECTION + MirroredVector(point_i),
+      Relative.ToWorld, ModifyHealthType.Damage, (winningTeam),
+      0, 0, 0, PlayEffect.BadExplosion, PlayEffect.ExplosionSound, 0.1, SPEED,
+      RandomReal(3,5), 0, 0, GRAVITY + 1);
+    CreateProjectile(ProjectileType.GenjiShuriken, null, point_i_mirror, Up() * Y_CORRECTION + MirroredVector(point_i_mirror),
+      Relative.ToWorld, ModifyHealthType.Damage, (winningTeam),
+      0, 0, 0, PlayEffect.BadExplosion, PlayEffect.ExplosionSound, 0.1, SPEED,
+      RandomReal(3,5), 0, 0, GRAVITY + 0.5);
+    CreateProjectile(ProjectileType.GenjiShuriken, null, point_i_mirror, Up() * Y_CORRECTION + MirroredVector(point_i_mirror),
+      Relative.ToWorld, ModifyHealthType.Damage, (winningTeam),
+      0, 0, 0, PlayEffect.BadExplosion, PlayEffect.ExplosionSound, 0.1, SPEED,
+      RandomReal(3,5), 0, 0, GRAVITY + 1);
+    Wait(0.192);
+  }
+  Loop();
+}

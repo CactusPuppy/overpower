@@ -43,34 +43,42 @@ void ChannelStateMachine() playervar "[player/channel.del | SUB] handle channel"
 {
   if (DEBUG_MODE) {
     LogToInspector($"CSM_Enter for {EventPlayer()}: ChannelState {channelState} | Action: {channelStateAction}");
-    switch (channelState) {
-      case ChannelState.NONE:
-      # ChannelState.NONE
-        if (channelStateAction == ChannelStateAction.BEGIN_CHANNELING) {
-          ChaseVariableOverTime(channelProgress, 100, nextChannelDuration, TimeChaseReevaluation.None);
-          channelState = ChannelState.CHANNELING;
-        }
-        break;
-      case ChannelState.CHANNELING:
-      # ChannelState.CHANNELING
-        if (channelStateAction == ChannelStateAction.INTERRUPTED) {
-          StopChasingVariable(channelProgress);
-          channelState = ChannelState.INTERRUPTED;
-          WaitAsync(INTERRUPT_DURATION, () => {
-            CSM_Trigger(ChannelStateAction.INTERRUPT_EXPIRE);
-          });
-        } else if (channelStateAction == ChannelStateAction.COMPLETE_CHANNELING) {
-          channelProgress = 0;
-          channelState = ChannelState.NONE;
-        }
-        break;
-      case ChannelState.INTERRUPTED:
-      # ChannelState.INTERRUPTED
-        if (channelStateAction == ChannelStateAction.INTERRUPT_EXPIRE) {
-          channelProgress = 0;
-          channelState = ChannelState.NONE;
-        }
-        break;
-    }
   }
+  switch (channelState) {
+    case ChannelState.NONE:
+    # ChannelState.NONE
+      if (channelStateAction == ChannelStateAction.BEGIN_CHANNELING) {
+        ChaseVariableOverTime(channelProgress, 100, nextChannelDuration, TimeChaseReevaluation.None);
+        channelState = ChannelState.CHANNELING;
+      }
+      break;
+    case ChannelState.CHANNELING:
+    # ChannelState.CHANNELING
+      if (channelStateAction == ChannelStateAction.INTERRUPTED) {
+        StopChasingVariable(channelProgress);
+        channelState = ChannelState.INTERRUPTED;
+        async ExpireInterruptState();
+      } else if (channelStateAction == ChannelStateAction.COMPLETE_CHANNELING) {
+        StopChasingVariable(channelProgress);
+        channelProgress = 0;
+        channelState = ChannelState.NONE;
+      }
+      break;
+    case ChannelState.INTERRUPTED:
+    # ChannelState.INTERRUPTED
+      if (channelStateAction == ChannelStateAction.INTERRUPT_EXPIRE) {
+        channelProgress = 0;
+        channelState = ChannelState.NONE;
+      }
+      break;
+  }
+  if (DEBUG_MODE) {
+    LogToInspector($"CSM_Exit for {EventPlayer()}: ChannelState {channelState} | Action: {channelStateAction}");
+  }
+}
+
+void ExpireInterruptState() playervar "[player/channel.del] Expire interrupt handler"
+{
+  Wait(INTERRUPT_DURATION);
+  CSM_Trigger(ChannelStateAction.INTERRUPT_EXPIRE);
 }

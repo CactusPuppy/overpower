@@ -1,0 +1,53 @@
+import "../lib/OSTWUtils/ResetPoint.del";
+
+ResetPoint[] TEAM_1_SPAWNS: [
+  { location: Vector(-21.47, 5.00, -156.39), facing: Vector(0.37, 0.00, 0.93) },
+  { location: Vector(-22.37, 5.00, -154.46), facing: Vector(0.45, 0.00, 0.90) },
+  { location: Vector(-23.07, 5.00, -155.89), facing: Vector(0.45, 0.00, 0.90) },
+  { location: Vector(-23.71, 5.00, -157.16), facing: Vector(0.45, 0.00, 0.90) },
+  { location: Vector(-22.18, 5.01, -157.87), facing: Vector(0.42, 0.00, 0.91) },
+  { location: Vector(-20.82, 5.00, -154.91), facing: Vector(0.42, 0.00, 0.91) }
+];
+
+
+
+
+ResetPoint[] TEAM_2_SPAWNS: [
+  { location: Vector(41.75, 7.00, -52.27), facing: Vector(1.00, 0.00, -0.03) },
+  { location: Vector(43.05, 7.00, -53.72), facing: Vector(0.96, 0.00, 0.26) },
+  { location: Vector(44.48, 7.00, -55.72), facing: Vector(0.69, 0.00, 0.73) },
+  { location: Vector(42.27, 7.00, -57.10), facing: Vector(0.75, 0.00, 0.66) },
+  { location: Vector(41.17, 7.00, -55.51), facing: Vector(0.90, 0.00, 0.44) },
+  { location: Vector(40.01, 7.00, -53.77), facing: Vector(0.99, 0.00, 0.17) }
+];
+
+single struct SpawnPoint {
+  public ResetPoint point;
+  public Number claimedTimestamp;
+}
+
+globalvar SpawnPoint[] team1RespawnPoints =
+  TEAM_1_SPAWNS.Map(resetPoint => { claimedTimestamp: -9999, point: resetPoint });
+
+globalvar SpawnPoint[] team2RespawnPoints =
+  TEAM_2_SPAWNS.Map(resetPoint => { claimedTimestamp: -9999, point: resetPoint });
+
+SpawnPoint[] TeamSpawns(Team t): t == Team.Team1 ? team1RespawnPoints : team2RespawnPoints;
+SpawnPoint[] AvailableSpawns(Team t): TeamSpawns(t).Filter(sp => sp.claimedTimestamp + 3 <= TotalTimeElapsed());
+
+rule: "[player/spawnpoint.del] When player respawns, select a spawnpoint and teleport the player to it"
+Event.OngoingPlayer
+if (HasSpawned())
+if (IsAlive())
+{
+  SpawnPoint chosenPoint = AvailableSpawns(TeamOf()).Random();
+  if (chosenPoint == null) {
+    chosenPoint = AvailableSpawns(TeamOf()).Sort(sp => sp.claimedTimestamp).First;
+  }
+  TeleportPlayerToResetPoint(EventPlayer(), chosenPoint.point);
+  chosenPoint.claimedTimestamp = TotalTimeElapsed();
+  if (AvailableSpawns(TeamOf()).Length == 0) {
+    chosenPoint = AvailableSpawns(TeamOf()).Sort(sp => sp.claimedTimestamp).First;
+    chosenPoint.claimedTimestamp = -9999;
+  }
+}
